@@ -4,7 +4,7 @@
 |---|--------|-------|-----|
 | 1 | Ortam: Spring Boot + PostgreSQL | Tamamlandı | Locale `C`, DB `stock_order_payment`, servis çalışıyor, app 8080 |
 | 2 | Product vertical slice (MVP) | Tamamlandı | CRUD-ish API, validation, 409/404, Swagger smoke |
-| 3 | Stock modülü (MVP) | Devam ediyor | Adım 1–3 bitti; sırada Service, Controller, smoke |
+| 3 | Stock modülü (MVP) | Devam ediyor | Adım 1–5 bitti; sırada smoke test |
 
 ---
 
@@ -49,11 +49,11 @@ Spring Boot bağımlılıkları, `application.yml`, PostgreSQL 18 kurulumu (init
 | 1 Entity | Tamam | `domain/stock/Stock.java` |
 | 2 Repository | Tamam | `repository/stock/StockRepository.java` |
 | 3 DTO | Tamam | `CreateStockRequest`, `UpdateStockRequest`, `StockResponse` |
-| 4 Service | Bekliyor | — |
-| 5 Controller | Bekliyor | — |
+| 4 Service | Tamam | `StockService` + stock exception’lar, handler güncellendi |
+| 5 Controller | Tamam | `StockController` — POST/GET/PATCH |
 | 6 Smoke test | Bekliyor | Swagger + pgAdmin `stock` |
 
-**Sıradaki:** Adım 4 — `StockService` + exception’lar.
+**Sıradaki:** Adım 6 — Swagger smoke test.
 
 ---
 
