@@ -1,0 +1,30 @@
+# Ortak ayarlar — yerel PostgreSQL için değerleri kendi ortamına göre güncelle
+spring:
+  application:
+    name: stock-order-payment-system
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/stock_order_payment
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      # İlk geliştirme aşamasında şema yokken ayağa kalksın diye; Flyway/Liquibase gelince validate + migration kullanırız.
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+    show-sql: false
+
+# Swagger UI: http://localhost:8080/swagger-ui.html  (springdoc varsayılanları)
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+server:
+  port: 8080
