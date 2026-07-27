@@ -1,0 +1,37 @@
+services:
+  db:
+    image: postgres:18-alpine
+    container_name: stock-order-payment-db
+    environment:
+      POSTGRES_DB: stock_order_payment
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d stock_order_payment"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    container_name: stock-order-payment-app
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:postgresql://db:5432/stock_order_payment
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      JWT_SECRET: docker-dev-secret-key-must-be-at-least-256-bits-long-hs256
+      JWT_EXPIRATION_MS: "86400000"
+      SERVER_PORT: "8080"
+    ports:
+      - "8080:8080"
+
+volumes:
+  postgres_data:

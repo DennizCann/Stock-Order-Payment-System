@@ -1,6 +1,7 @@
 package com.denizcan.stockorderpayment.web.stock;
 
 import com.denizcan.stockorderpayment.service.stock.StockService;
+import com.denizcan.stockorderpayment.web.inventory.dto.StockMovementRequest;
 import com.denizcan.stockorderpayment.web.stock.dto.CreateStockRequest;
 import com.denizcan.stockorderpayment.web.stock.dto.StockResponse;
 import com.denizcan.stockorderpayment.web.stock.dto.UpdateStockRequest;
@@ -43,5 +44,21 @@ public class StockController {
             @Valid @RequestBody UpdateStockRequest request
     ) {
         return stockService.updateQuantity(productId, request);
+    }
+
+    @PostMapping("/in")
+    public StockResponse stockIn(
+            @PathVariable Long productId,
+            @Valid @RequestBody StockMovementRequest request
+    ) {
+        return stockService.stockIn(productId, request);
+    }
+
+    @PostMapping("/out")
+    public StockResponse stockOut(
+            @PathVariable Long productId,
+            @Valid @RequestBody StockMovementRequest request
+    ) {
+        return stockService.stockOut(productId, request);
     }
 }

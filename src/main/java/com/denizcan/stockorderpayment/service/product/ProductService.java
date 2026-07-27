@@ -7,6 +7,7 @@ import com.denizcan.stockorderpayment.repository.product.ProductRepository;
 import com.denizcan.stockorderpayment.web.product.dto.CreateProductRequest;
 import com.denizcan.stockorderpayment.web.product.dto.ProductResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,6 +15,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ProductService {
 
     private final ProductRepository productRepository;
@@ -26,6 +28,7 @@ public class ProductService {
 
         Product product = new Product(request.name(), request.sku(), request.price());
         Product saved = productRepository.save(product);
+        log.info("Created product sku={}", saved.getSku());
         return ProductResponse.from(saved);
     }
 

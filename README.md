@@ -1,159 +1,227 @@
 # Stock–Order–Payment System
 
-> **Work in progress** — Aktif geliştirilen bir portföy backend projesi.  
-> Amaç: E-ticaret / perakende ortamlarındaki **stok, sipariş ve ödeme** akışlarını gerçekçi bir mimariyle simüle etmek.
+> **Work in progress** — Portfolio-quality Spring Boot backend for stock tracking, evolving toward order/payment flows.  
+> Focus: technologies commonly requested in Java Backend job postings (Security, JWT, Docker, Flyway, tests).
 
 ---
 
-## Proje vizyonu
+## Project vision
 
-Tutorial seviyesinde basit CRUD değil; aşağıdaki iş akışlarını hedefleyen bir backend:
+Not a toy CRUD app. Target business flow:
 
 ```
-Ürün kataloğu → Stok yönetimi → Sipariş oluşturma → Ödeme → Async callback
+Product catalog → Stock management → Inventory history → (next) Order → Payment → Async callback
 ```
-
-Ödeme sağlayıcı simülasyonu, stok–sipariş tutarlılığı ve asenkron callback gibi gerçek sistemlerde görülen senaryolar üzerinde pratik yapmak için tasarlandı.
 
 ---
 
-## Şu an çalışan özellikler
+## Current features
 
-| Modül | Durum | Açıklama |
-|--------|--------|----------|
-| **Product** | Tamamlandı | Ürün oluşturma, listeleme, id ile sorgulama |
-| **Stock** | Tamamlandı | Ürün başına stok tanımı, okuma, miktar güncelleme (SET) |
-| **Order** | Planlandı | — |
-| **Payment** | Planlandı | — |
-| **Async callback** | Planlandı | — |
+| Module | Status | Description |
+|--------|--------|-------------|
+| **Auth** | Done | JWT login, `ADMIN` / `USER` roles |
+| **Product** | Done | Create / list / get by id |
+| **Stock** | Done | Create / get / set quantity / stock-in / stock-out |
+| **Inventory history** | Done | Transaction log per product |
+| **Order** | Planned | — |
+| **Payment** | Planned | — |
 
-### API özeti
+### API overview
+
+**Auth**
+
+| Method | Endpoint | Auth |
+|--------|----------|------|
+| `POST` | `/api/v1/auth/login` | Public |
 
 **Products**
 
-| Method | Endpoint | Açıklama |
-|--------|----------|----------|
-| `POST` | `/api/v1/products` | Yeni ürün |
-| `GET` | `/api/v1/products` | Ürün listesi |
-| `GET` | `/api/v1/products/{id}` | Tek ürün |
+| Method | Endpoint | Roles |
+|--------|----------|-------|
+| `POST` | `/api/v1/products` | `ADMIN` |
+| `GET` | `/api/v1/products` | `USER`, `ADMIN` |
+| `GET` | `/api/v1/products/{id}` | `USER`, `ADMIN` |
 
-**Stock** (ürüne bağlı)
+**Stock**
 
-| Method | Endpoint | Açıklama |
-|--------|----------|----------|
-| `POST` | `/api/v1/products/{productId}/stock` | İlk stok kaydı |
-| `GET` | `/api/v1/products/{productId}/stock` | Stok sorgula |
-| `PATCH` | `/api/v1/products/{productId}/stock` | Miktarı güncelle |
+| Method | Endpoint | Roles |
+|--------|----------|-------|
+| `POST` | `/api/v1/products/{productId}/stock` | `ADMIN` |
+| `GET` | `/api/v1/products/{productId}/stock` | `USER`, `ADMIN` |
+| `PATCH` | `/api/v1/products/{productId}/stock` | `ADMIN` |
+| `POST` | `/api/v1/products/{productId}/stock/in` | `ADMIN` |
+| `POST` | `/api/v1/products/{productId}/stock/out` | `ADMIN` |
 
-**Hata yönetimi:** Validation → `400`, bulunamayan kayıt → `404`, çift SKU / çift stok → `409`.
+**Inventory**
+
+| Method | Endpoint | Roles |
+|--------|----------|-------|
+| `GET` | `/api/v1/products/{productId}/inventory-transactions` | `USER`, `ADMIN` |
+
+**Errors:** `400` validation, `401` bad credentials, `403` forbidden, `404` not found, `409` conflict (duplicate SKU/stock, insufficient stock).
 
 ---
 
-## Yol haritası
+## Roadmap
 
-- [x] Spring Boot + PostgreSQL altyapısı
-- [x] Product vertical slice (entity → API)
-- [x] Stock modülü (FK `product_id`, nested REST)
-- [ ] Order oluşturma ve stok rezervasyonu
-- [ ] Payment akışı ve provider simülasyonu
-- [ ] Asenkron ödeme callback’i
-- [ ] Flyway/Liquibase migration (şu an `ddl-auto: update`)
-- [ ] Unit / integration testler
-- [ ] Docker, JWT, Kafka (opsiyonel genişletmeler)
+- [x] Spring Boot + PostgreSQL
+- [x] Product + Stock vertical slices
+- [x] Flyway migrations + env profiles
+- [x] Docker + Docker Compose
+- [x] Spring Security + JWT + RBAC
+- [x] Unit + integration tests
+- [x] Inventory transaction history
+- [ ] Order + stock reservation
+- [ ] Payment provider simulation + async callback
+- [ ] Pagination / filtering, Redis/Kafka (optional)
 
-İlerleme detayı: [`TICKETS.md`](TICKETS.md)
+Progress tracker: [`TICKETS.md`](TICKETS.md)
 
 ---
 
 ## Tech stack
 
-| Katman | Teknoloji |
+| Layer | Technology |
 |--------|-----------|
 | Runtime | Java 21 |
 | Framework | Spring Boot 3.4 |
-| Persistence | Spring Data JPA, Hibernate |
-| Database | PostgreSQL |
-| API | REST, Bean Validation |
-| Docs | Springdoc OpenAPI (Swagger UI) |
+| Security | Spring Security, JWT (JJWT) |
+| Persistence | Spring Data JPA, Hibernate, Flyway |
+| Database | PostgreSQL (H2 for tests) |
+| API | REST, Bean Validation, Springdoc OpenAPI |
 | Build | Maven |
-| Boilerplate | Lombok |
+| Containers | Docker, Docker Compose |
+| Tests | JUnit 5, Mockito, MockMvc, Spring Security Test |
 
 ---
 
-## Mimari
-
-Katmanlı, service-oriented yapı:
+## Architecture
 
 ```
-Controller  →  Service  →  Repository  →  Entity  →  PostgreSQL
-     ↑              ↑
-   DTO + @Valid   İş kuralları
+Controller → Service → Repository → Entity → PostgreSQL
+     ↑           ↑
+  DTO/@Valid  Business rules + inventory logging
 ```
-
-- **DTO:** API sözleşmesi; entity dışarı sızdırılmaz.
-- **GlobalExceptionHandler:** Domain exception’lar anlamlı HTTP status’lara map edilir.
 
 ```
 com.denizcan.stockorderpayment
-├── domain/          # JPA entity'ler
-├── repository/      # Spring Data JPA
-├── service/         # İş kuralları
-├── web/             # Controller, DTO, exception handler
-└── exception/       # Domain exception'lar
+├── config/          # OpenAPI, seed data
+├── domain/          # Product, Stock, User, Inventory
+├── repository/
+├── security/        # JWT filter, SecurityFilterChain
+├── service/
+├── web/             # Controllers, DTOs, exception handler
+└── exception/
 ```
 
 ---
 
-## Gereksinimler
+## Default users (seeded on startup)
 
-- JDK 21
-- Maven 3.9+
-- PostgreSQL 16+ (yerelde 18 ile test edildi)
+| Username | Password | Role |
+|----------|----------|------|
+| `admin` | `admin123` | `ADMIN` |
+| `user` | `user123` | `USER` |
+
+Change these before any real deployment.
 
 ---
 
-## Yerelde çalıştırma
+## Run locally (Maven + PostgreSQL)
 
-### 1. Veritabanı
-
-PostgreSQL’de veritabanı oluştur:
+1. Create DB:
 
 ```sql
 CREATE DATABASE stock_order_payment;
 ```
 
-`src/main/resources/application.yml` içindeki kullanıcı, şifre ve port kendi kurulumunla uyumlu olmalı (varsayılan: `postgres` / `postgres`, port `5432`).
+2. Configure env (optional; defaults work for local demo):
 
-### 2. Uygulama
+```bash
+# Windows PowerShell examples
+$env:SPRING_PROFILES_ACTIVE="dev"
+$env:DB_URL="jdbc:postgresql://localhost:5432/stock_order_payment"
+$env:DB_USERNAME="postgres"
+$env:DB_PASSWORD="postgres"
+```
+
+3. Start:
 
 ```bash
 mvn spring-boot:run
 ```
 
-veya IntelliJ’den `StockOrderPaymentApplication` sınıfını çalıştır.
+If you already had Hibernate-created tables, either drop them or rely on Flyway `baseline-on-migrate` (enabled in `dev`).
 
-### 3. API dokümantasyonu
+4. Swagger: [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html)
 
-Uygulama ayaktayken:
-
-- Swagger UI: [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html)
-- OpenAPI JSON: [http://localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs)
-
-### 4. Hızlı smoke test
-
-1. `POST /api/v1/products` ile ürün oluştur.
-2. Dönen `id` ile `POST /api/v1/products/{id}/stock` — örnek body: `{ "quantity": 100 }`.
-3. `GET /api/v1/products/{id}/stock` ile doğrula.
+5. Login in Swagger → Authorize with `Bearer <token>` → call product/stock APIs.
 
 ---
 
-## Notlar
+## Run with Docker Compose
 
-- Geliştirme ortamında şema `spring.jpa.hibernate.ddl-auto: update` ile yönetiliyor; production benzeri ortamda migration aracına geçilmesi planlanıyor.
-- Proje bilinçli olarak küçük ticket’larla ilerletiliyor; her modül aynı vertical slice kalıbını tekrarlar.
+```bash
+docker compose up --build
+```
+
+- App: `http://localhost:8080`
+- Swagger: `http://localhost:8080/swagger-ui/index.html`
+- DB: PostgreSQL on `localhost:5432`
 
 ---
 
-## Lisans
+## Example requests
 
-Bu proje portföy / öğrenme amaçlıdır.
+```bash
+# Login
+curl -X POST http://localhost:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d "{\"username\":\"admin\",\"password\":\"admin123\"}"
+
+# Create product (use accessToken from login)
+curl -X POST http://localhost:8080/api/v1/products \
+  -H "Authorization: Bearer <TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d "{\"name\":\"Laptop\",\"sku\":\"LAP-001\",\"price\":29999.99}"
+
+# Create stock
+curl -X POST http://localhost:8080/api/v1/products/1/stock \
+  -H "Authorization: Bearer <TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d "{\"quantity\":100}"
+
+# Stock in / out
+curl -X POST http://localhost:8080/api/v1/products/1/stock/in \
+  -H "Authorization: Bearer <TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d "{\"quantity\":10,\"note\":\"Purchase\"}"
+```
+
+---
+
+## Tests
+
+```bash
+mvn test
+```
+
+Covers service unit tests (Mockito) and controller/auth integration tests (`@SpringBootTest` + MockMvc, `test` profile with H2).
+
+---
+
+## Configuration profiles
+
+| Profile | Purpose |
+|---------|---------|
+| `dev` (default) | PostgreSQL + Flyway + SQL logging |
+| `test` | In-memory H2, Flyway off, `ddl-auto: create-drop` |
+| `prod` | Env-based DB credentials, quieter logging |
+
+JWT secret: `app.jwt.secret` / `JWT_SECRET` (must be long enough for HS256).
+
+---
+
+## License
+
+Portfolio / learning project.

@@ -1,9 +1,11 @@
 package com.denizcan.stockorderpayment.web;
 
 import com.denizcan.stockorderpayment.exception.DuplicateSkuException;
+import com.denizcan.stockorderpayment.exception.InsufficientStockException;
 import com.denizcan.stockorderpayment.exception.ProductNotFoundException;
 import com.denizcan.stockorderpayment.exception.StockAlreadyExistsException;
 import com.denizcan.stockorderpayment.exception.StockNotFoundException;
+import com.denizcan.stockorderpayment.service.auth.InvalidCredentialsException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -33,6 +35,16 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(StockNotFoundException.class)
     public ProblemDetail handleStockNotFound(StockNotFoundException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    @ExceptionHandler(InsufficientStockException.class)
+    public ProblemDetail handleInsufficientStock(InsufficientStockException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ProblemDetail handleInvalidCredentials(InvalidCredentialsException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
