@@ -2,6 +2,7 @@ package com.denizcan.stockorderpayment.web;
 
 import com.denizcan.stockorderpayment.exception.DuplicateSkuException;
 import com.denizcan.stockorderpayment.exception.InsufficientStockException;
+import com.denizcan.stockorderpayment.exception.InvalidOrderException;
 import com.denizcan.stockorderpayment.exception.ProductNotFoundException;
 import com.denizcan.stockorderpayment.exception.StockAlreadyExistsException;
 import com.denizcan.stockorderpayment.exception.StockNotFoundException;
@@ -40,6 +41,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InsufficientStockException.class)
     public ProblemDetail handleInsufficientStock(InsufficientStockException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(InvalidOrderException.class)
+    public ProblemDetail handleInvalidOrder(InvalidOrderException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
     @ExceptionHandler(InvalidCredentialsException.class)
