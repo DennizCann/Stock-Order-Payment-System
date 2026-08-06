@@ -3,6 +3,7 @@ package com.denizcan.stockorderpayment.service.stock;
 import com.denizcan.stockorderpayment.domain.inventory.InventoryTransactionType;
 import com.denizcan.stockorderpayment.domain.stock.Stock;
 import com.denizcan.stockorderpayment.exception.InsufficientStockException;
+import com.denizcan.stockorderpayment.exception.InvalidStockReservationException;
 import com.denizcan.stockorderpayment.exception.ProductNotFoundException;
 import com.denizcan.stockorderpayment.exception.StockAlreadyExistsException;
 import com.denizcan.stockorderpayment.exception.StockNotFoundException;
@@ -174,6 +175,68 @@ class StockServiceTest {
 
         assertThatThrownBy(() -> stockService.reserve(1L, 6, "order"))
                 .isInstanceOf(InsufficientStockException.class);
+        verify(inventoryTransactionService, never()).record(anyLong(), any(), anyInt(), anyInt(), anyString());
+    }
+
+    @Test
+    void release_shouldDecreaseReservedAndIncreaseAvailable() {
+        Stock stock = new Stock(1L, 20);
+        stock.reserve(8);
+        when(stockRepository.findByProductId(1L)).thenReturn(Optional.of(stock));
+
+        StockResponse response = stockService.release(1L, 5, "Released for cancelled order 3");
+
+        assertThat(response.quantity()).isEqualTo(20);
+        assertThat(response.reservedQuantity()).isEqualTo(3);
+        assertThat(response.availableQuantity()).isEqualTo(17);
+        verify(inventoryTransactionService).record(
+                eq(1L),
+                eq(InventoryTransactionType.RELEASE),
+                eq(12),
+                eq(17),
+                eq("Released for cancelled order 3")
+        );
+    }
+
+    @Test
+    void release_shouldThrow_whenReleasingMoreThanReserved() {
+        Stock stock = new Stock(1L, 10);
+        stock.reserve(2);
+        when(stockRepository.findByProductId(1L)).thenReturn(Optional.of(stock));
+
+        assertThatThrownBy(() -> stockService.release(1L, 3, "order"))
+                .isInstanceOf(InvalidStockReservationException.class);
+        verify(inventoryTransactionService, never()).record(anyLong(), any(), anyInt(), anyInt(), anyString());
+    }
+
+    @Test
+    void consumeReserved_shouldDecreaseQuantityAndReserved() {
+        Stock stock = new Stock(1L, 20);
+        stock.reserve(9);
+        when(stockRepository.findByProductId(1L)).thenReturn(Optional.of(stock));
+
+        StockResponse response = stockService.consumeReserved(1L, 6, "Consumed for paid order 11");
+
+        assertThat(response.quantity()).isEqualTo(14);
+        assertThat(response.reservedQuantity()).isEqualTo(3);
+        assertThat(response.availableQuantity()).isEqualTo(11);
+        verify(inventoryTransactionService).record(
+                eq(1L),
+                eq(InventoryTransactionType.CONSUME),
+                eq(20),
+                eq(14),
+                eq("Consumed for paid order 11")
+        );
+    }
+
+    @Test
+    void consumeReserved_shouldThrow_whenConsumingMoreThanReserved() {
+        Stock stock = new Stock(1L, 15);
+        stock.reserve(4);
+        when(stockRepository.findByProductId(1L)).thenReturn(Optional.of(stock));
+
+        assertThatThrownBy(() -> stockService.consumeReserved(1L, 5, "order"))
+                .isInstanceOf(InvalidStockReservationException.class);
         verify(inventoryTransactionService, never()).record(anyLong(), any(), anyInt(), anyInt(), anyString());
     }
 }

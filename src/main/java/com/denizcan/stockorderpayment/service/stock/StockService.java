@@ -153,4 +153,57 @@ public class StockService {
         );
         return StockResponse.from(stock);
     }
+
+    @Transactional
+    public StockResponse release(Long productId, int amount, String note) {
+        Stock stock = stockRepository.findByProductId(productId)
+                .orElseThrow(() -> new StockNotFoundException(productId));
+
+        int previousAvailable = stock.getAvailableQuantity();
+        stock.release(amount);
+
+        inventoryTransactionService.record(
+                productId,
+                InventoryTransactionType.RELEASE,
+                previousAvailable,
+                stock.getAvailableQuantity(),
+                note != null ? note : "Stock release"
+        );
+
+        log.info(
+                "Released stock productId={} amount={} available={}->{}",
+                productId,
+                amount,
+                previousAvailable,
+                stock.getAvailableQuantity()
+        );
+        return StockResponse.from(stock);
+    }
+
+    @Transactional
+    public StockResponse consumeReserved(Long productId, int amount, String note) {
+        Stock stock = stockRepository.findByProductId(productId)
+                .orElseThrow(() -> new StockNotFoundException(productId));
+
+        int previousQuantity = stock.getQuantity();
+        stock.consumeReserved(amount);
+
+        inventoryTransactionService.record(
+                productId,
+                InventoryTransactionType.CONSUME,
+                previousQuantity,
+                stock.getQuantity(),
+                note != null ? note : "Reserved stock consumed"
+        );
+
+        log.info(
+                "Consumed reserved stock productId={} amount={} quantity={}->{} reserved={}",
+                productId,
+                amount,
+                previousQuantity,
+                stock.getQuantity(),
+                stock.getReservedQuantity()
+        );
+        return StockResponse.from(stock);
+    }
 }

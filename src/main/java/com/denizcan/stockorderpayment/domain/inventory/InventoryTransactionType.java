@@ -5,5 +5,7 @@ public enum InventoryTransactionType {
     STOCK_IN,
     STOCK_OUT,
     ADJUSTMENT,
-    RESERVATION
+    RESERVATION,
+    RELEASE,
+    CONSUME
 }
