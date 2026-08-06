@@ -122,6 +122,16 @@ class StockServiceTest {
     }
 
     @Test
+    void stockOut_shouldThrow_whenAvailableIsReducedByReservation() {
+        Stock stock = new Stock(1L, 10);
+        stock.reserve(8);
+        when(stockRepository.findByProductId(1L)).thenReturn(Optional.of(stock));
+
+        assertThatThrownBy(() -> stockService.stockOut(1L, new StockMovementRequest(5, "order")))
+                .isInstanceOf(InsufficientStockException.class);
+    }
+
+    @Test
     void stockIn_shouldIncreaseQuantity() {
         Stock stock = new Stock(1L, 20);
         when(stockRepository.findByProductId(1L)).thenReturn(Optional.of(stock));
@@ -136,5 +146,34 @@ class StockServiceTest {
                 eq(35),
                 eq("purchase")
         );
+    }
+
+    @Test
+    void reserve_shouldIncreaseReservedAndRecordReservation() {
+        Stock stock = new Stock(1L, 20);
+        when(stockRepository.findByProductId(1L)).thenReturn(Optional.of(stock));
+
+        StockResponse response = stockService.reserve(1L, 7, "Reserved for order 9");
+
+        assertThat(response.quantity()).isEqualTo(20);
+        assertThat(response.reservedQuantity()).isEqualTo(7);
+        assertThat(response.availableQuantity()).isEqualTo(13);
+        verify(inventoryTransactionService).record(
+                eq(1L),
+                eq(InventoryTransactionType.RESERVATION),
+                eq(20),
+                eq(13),
+                eq("Reserved for order 9")
+        );
+    }
+
+    @Test
+    void reserve_shouldThrow_whenInsufficientAvailable() {
+        Stock stock = new Stock(1L, 5);
+        when(stockRepository.findByProductId(1L)).thenReturn(Optional.of(stock));
+
+        assertThatThrownBy(() -> stockService.reserve(1L, 6, "order"))
+                .isInstanceOf(InsufficientStockException.class);
+        verify(inventoryTransactionService, never()).record(anyLong(), any(), anyInt(), anyInt(), anyString());
     }
 }

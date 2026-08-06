@@ -7,9 +7,11 @@ import com.denizcan.stockorderpayment.exception.InvalidOrderException;
 import com.denizcan.stockorderpayment.exception.ProductNotFoundException;
 import com.denizcan.stockorderpayment.repository.order.OrderRepository;
 import com.denizcan.stockorderpayment.repository.product.ProductRepository;
+import com.denizcan.stockorderpayment.service.stock.StockService;
 import com.denizcan.stockorderpayment.web.order.dto.CreateOrderItemRequest;
 import com.denizcan.stockorderpayment.web.order.dto.CreateOrderRequest;
 import com.denizcan.stockorderpayment.web.order.dto.OrderResponse;
+import com.denizcan.stockorderpayment.web.stock.dto.StockResponse;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -24,6 +26,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -37,6 +43,9 @@ class OrderServiceTest {
     @Mock
     private ProductRepository productRepository;
 
+    @Mock
+    private StockService stockService;
+
     @InjectMocks
     private OrderService orderService;
 
@@ -46,7 +55,13 @@ class OrderServiceTest {
         Product mouse = productWithId(2L, "Mouse", "MOU-1", "25.00");
 
         when(productRepository.findAllById(anyCollection())).thenReturn(List.of(laptop, mouse));
-        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
+            Order order = invocation.getArgument(0);
+            setId(order, 42L);
+            return order;
+        });
+        when(stockService.reserve(anyLong(), anyInt(), anyString()))
+                .thenReturn(new StockResponse(1L, 1L, 10, 0, 10));
 
         CreateOrderRequest request = new CreateOrderRequest(
                 7L,
@@ -69,6 +84,9 @@ class OrderServiceTest {
         assertThat(response.status()).isEqualTo(OrderStatus.CREATED);
         assertThat(response.totalAmount()).isEqualByComparingTo("275.00");
         assertThat(response.items()).hasSize(2);
+
+        verify(stockService).reserve(eq(1L), eq(2), eq("Reserved for order 42"));
+        verify(stockService).reserve(eq(2L), eq(3), eq("Reserved for order 42"));
     }
 
     @Test
@@ -84,6 +102,7 @@ class OrderServiceTest {
                 .isInstanceOf(ProductNotFoundException.class);
 
         verify(orderRepository, never()).save(any());
+        verify(stockService, never()).reserve(anyLong(), anyInt(), anyString());
     }
 
     @Test
@@ -99,13 +118,20 @@ class OrderServiceTest {
 
         verify(productRepository, never()).findAllById(anyCollection());
         verify(orderRepository, never()).save(any());
+        verify(stockService, never()).reserve(anyLong(), anyInt(), anyString());
     }
 
     @Test
     void create_shouldMergeDuplicateProductLines() {
         Product laptop = productWithId(1L, "Laptop", "LAP-1", "50.00");
         when(productRepository.findAllById(anyCollection())).thenReturn(List.of(laptop));
-        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
+            Order order = invocation.getArgument(0);
+            setId(order, 10L);
+            return order;
+        });
+        when(stockService.reserve(anyLong(), anyInt(), anyString()))
+                .thenReturn(new StockResponse(1L, 1L, 20, 5, 15));
 
         CreateOrderRequest request = new CreateOrderRequest(
                 1L,
@@ -120,13 +146,20 @@ class OrderServiceTest {
         assertThat(response.items()).hasSize(1);
         assertThat(response.items().getFirst().quantity()).isEqualTo(5);
         assertThat(response.totalAmount()).isEqualByComparingTo("250.00");
+        verify(stockService).reserve(eq(1L), eq(5), eq("Reserved for order 10"));
     }
 
     @Test
     void create_shouldUseCurrentProductPriceForLineTotals() {
         Product product = productWithId(5L, "Keyboard", "KEY-1", "40.00");
         when(productRepository.findAllById(anyCollection())).thenReturn(List.of(product));
-        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
+            Order order = invocation.getArgument(0);
+            setId(order, 3L);
+            return order;
+        });
+        when(stockService.reserve(anyLong(), anyInt(), anyString()))
+                .thenReturn(new StockResponse(1L, 5L, 40, 4, 36));
 
         OrderResponse response = orderService.create(new CreateOrderRequest(
                 3L,
@@ -137,17 +170,22 @@ class OrderServiceTest {
         assertThat(response.items().getFirst().unitPrice()).isEqualByComparingTo("40.00");
         assertThat(response.items().getFirst().lineTotal()).isEqualByComparingTo("160.00");
         assertThat(response.totalAmount()).isEqualByComparingTo("160.00");
+        verify(stockService).reserve(eq(5L), eq(4), anyString());
     }
 
     private static Product productWithId(Long id, String name, String sku, String price) {
         Product product = new Product(name, sku, new BigDecimal(price));
+        setId(product, id);
+        return product;
+    }
+
+    private static void setId(Object entity, Long id) {
         try {
-            var field = Product.class.getDeclaredField("id");
+            var field = entity.getClass().getDeclaredField("id");
             field.setAccessible(true);
-            field.set(product, id);
+            field.set(entity, id);
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException(e);
         }
-        return product;
     }
 }

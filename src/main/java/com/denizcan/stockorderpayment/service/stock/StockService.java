@@ -105,8 +105,12 @@ public class StockService {
                 .orElseThrow(() -> new StockNotFoundException(productId));
 
         int previous = stock.getQuantity();
-        if (previous < request.quantity()) {
-            throw new InsufficientStockException(productId, previous, request.quantity());
+        if (stock.getAvailableQuantity() < request.quantity()) {
+            throw new InsufficientStockException(
+                    productId,
+                    stock.getAvailableQuantity(),
+                    request.quantity()
+            );
         }
 
         int updated = previous - request.quantity();
@@ -121,6 +125,32 @@ public class StockService {
         );
 
         log.info("Stock-out productId={} amount={} newQuantity={}", productId, request.quantity(), updated);
+        return StockResponse.from(stock);
+    }
+
+    @Transactional
+    public StockResponse reserve(Long productId, int amount, String note) {
+        Stock stock = stockRepository.findByProductId(productId)
+                .orElseThrow(() -> new StockNotFoundException(productId));
+
+        int previousAvailable = stock.getAvailableQuantity();
+        stock.reserve(amount);
+
+        inventoryTransactionService.record(
+                productId,
+                InventoryTransactionType.RESERVATION,
+                previousAvailable,
+                stock.getAvailableQuantity(),
+                note != null ? note : "Stock reservation"
+        );
+
+        log.info(
+                "Reserved stock productId={} amount={} available={}->{}",
+                productId,
+                amount,
+                previousAvailable,
+                stock.getAvailableQuantity()
+        );
         return StockResponse.from(stock);
     }
 }

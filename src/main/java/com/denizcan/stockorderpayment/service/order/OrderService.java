@@ -7,6 +7,7 @@ import com.denizcan.stockorderpayment.exception.InvalidOrderException;
 import com.denizcan.stockorderpayment.exception.ProductNotFoundException;
 import com.denizcan.stockorderpayment.repository.order.OrderRepository;
 import com.denizcan.stockorderpayment.repository.product.ProductRepository;
+import com.denizcan.stockorderpayment.service.stock.StockService;
 import com.denizcan.stockorderpayment.web.order.dto.CreateOrderItemRequest;
 import com.denizcan.stockorderpayment.web.order.dto.CreateOrderRequest;
 import com.denizcan.stockorderpayment.web.order.dto.OrderMapper;
@@ -30,6 +31,7 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
+    private final StockService stockService;
 
     @Transactional
     public OrderResponse create(CreateOrderRequest request) {
@@ -43,10 +45,18 @@ public class OrderService {
         });
 
         Order saved = orderRepository.save(order);
+        reserveStockForOrder(saved.getId(), quantitiesByProductId);
+
         log.info("Created order id={} userId={} total={} itemCount={}",
                 saved.getId(), saved.getUserId(), saved.getTotalAmount(), saved.getItems().size());
 
         return OrderMapper.toResponse(saved);
+    }
+
+    private void reserveStockForOrder(Long orderId, Map<Long, Integer> quantitiesByProductId) {
+        quantitiesByProductId.forEach((productId, quantity) ->
+                stockService.reserve(productId, quantity, "Reserved for order " + orderId)
+        );
     }
 
     private Map<Long, Integer> mergeItemQuantities(List<CreateOrderItemRequest> items) {
