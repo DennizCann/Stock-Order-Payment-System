@@ -1,204 +1,116 @@
-# Stock–Order–Payment System
+# Stock-Order-Payment System
 
-> **Work in progress** — Portfolio-quality Spring Boot backend for stock tracking, evolving toward order/payment flows.  
-> Focus: technologies commonly requested in Java Backend job postings (Security, JWT, Docker, Flyway, tests).
+A portfolio backend built with Java 21 and Spring Boot 3.4 to model product, stock, inventory, order, and payment workflows.
 
----
+> **Work in progress:** Product, stock, inventory history, authentication, and the order-domain foundation are implemented. The order REST API is still in progress; payment integration is planned.
 
-## Project vision
+## Current status
 
-Not a toy CRUD app. Target business flow:
+| Module | Status | Details |
+|---|---|---|
+| Authentication | Done | JWT login with `ADMIN` and `USER` roles |
+| Product | Done | Create, list, and get by id |
+| Stock | Done | Create, query, adjust, stock-in, and stock-out |
+| Inventory history | Done | Traceable transaction log per product |
+| Order | In progress | Domain model, persistence, DTOs, service logic, stock reservation, and tests |
+| Payment | Planned | Provider simulation and asynchronous callback flow |
 
-```
-Product catalog → Stock management → Inventory history → (next) Order → Payment → Async callback
-```
+## Technical highlights
 
----
+- Versioned REST APIs with DTO validation and centralized exception handling
+- Spring Security, JWT authentication, and role-based access control
+- PostgreSQL persistence with Spring Data JPA/Hibernate and Flyway migrations
+- Transactional stock movements and inventory history
+- Order-domain modeling with stock reservation and release/consume operations
+- Unit and integration tests with JUnit 5, Mockito, MockMvc, Spring Security Test, and H2
+- Docker and Docker Compose for the application and PostgreSQL
+- Springdoc OpenAPI documentation
 
-## Current features
+## API overview
 
-| Module | Status | Description |
-|--------|--------|-------------|
-| **Auth** | Done | JWT login, `ADMIN` / `USER` roles |
-| **Product** | Done | Create / list / get by id |
-| **Stock** | Done | Create / get / set quantity / stock-in / stock-out |
-| **Inventory history** | Done | Transaction log per product |
-| **Order** | Planned | — |
-| **Payment** | Planned | — |
+### Authentication
 
-### API overview
-
-**Auth**
-
-| Method | Endpoint | Auth |
-|--------|----------|------|
+| Method | Endpoint | Access |
+|---|---|---|
 | `POST` | `/api/v1/auth/login` | Public |
 
-**Products**
+### Products
 
 | Method | Endpoint | Roles |
-|--------|----------|-------|
+|---|---|---|
 | `POST` | `/api/v1/products` | `ADMIN` |
 | `GET` | `/api/v1/products` | `USER`, `ADMIN` |
 | `GET` | `/api/v1/products/{id}` | `USER`, `ADMIN` |
 
-**Stock**
+### Stock and inventory
 
 | Method | Endpoint | Roles |
-|--------|----------|-------|
+|---|---|---|
 | `POST` | `/api/v1/products/{productId}/stock` | `ADMIN` |
 | `GET` | `/api/v1/products/{productId}/stock` | `USER`, `ADMIN` |
 | `PATCH` | `/api/v1/products/{productId}/stock` | `ADMIN` |
 | `POST` | `/api/v1/products/{productId}/stock/in` | `ADMIN` |
 | `POST` | `/api/v1/products/{productId}/stock/out` | `ADMIN` |
-
-**Inventory**
-
-| Method | Endpoint | Roles |
-|--------|----------|-------|
 | `GET` | `/api/v1/products/{productId}/inventory-transactions` | `USER`, `ADMIN` |
 
-**Errors:** `400` validation, `401` bad credentials, `403` forbidden, `404` not found, `409` conflict (duplicate SKU/stock, insufficient stock).
-
----
-
-## Roadmap
-
-- [x] Spring Boot + PostgreSQL
-- [x] Product + Stock vertical slices
-- [x] Flyway migrations + env profiles
-- [x] Docker + Docker Compose
-- [x] Spring Security + JWT + RBAC
-- [x] Unit + integration tests
-- [x] Inventory transaction history
-- [ ] Order + stock reservation
-- [ ] Payment provider simulation + async callback
-- [ ] Pagination / filtering, Redis/Kafka (optional)
-
-Progress tracker: [`TICKETS.md`](TICKETS.md)
-
----
+The order REST controller is not yet exposed publicly.
 
 ## Tech stack
 
-| Layer | Technology |
-|--------|-----------|
+| Area | Technology |
+|---|---|
 | Runtime | Java 21 |
 | Framework | Spring Boot 3.4 |
 | Security | Spring Security, JWT (JJWT) |
 | Persistence | Spring Data JPA, Hibernate, Flyway |
-| Database | PostgreSQL (H2 for tests) |
+| Database | PostgreSQL; H2 for tests |
 | API | REST, Bean Validation, Springdoc OpenAPI |
 | Build | Maven |
 | Containers | Docker, Docker Compose |
-| Tests | JUnit 5, Mockito, MockMvc, Spring Security Test |
-
----
+| Testing | JUnit 5, Mockito, MockMvc, Spring Security Test |
 
 ## Architecture
 
-```
-Controller → Service → Repository → Entity → PostgreSQL
-     ↑           ↑
-  DTO/@Valid  Business rules + inventory logging
+```text
+Controller -> Service -> Repository -> Entity -> PostgreSQL
+     |           |
+  DTO/@Valid   Business rules, transactions, inventory logging
 ```
 
-```
+```text
 com.denizcan.stockorderpayment
-├── config/          # OpenAPI, seed data
-├── domain/          # Product, Stock, User, Inventory
-├── repository/
-├── security/        # JWT filter, SecurityFilterChain
-├── service/
-├── web/             # Controllers, DTOs, exception handler
-└── exception/
+|- config/       OpenAPI and seed data
+|- domain/       Product, stock, inventory, user, and order models
+|- repository/   Spring Data repositories
+|- security/     JWT filter and SecurityFilterChain
+|- service/      Product, stock, and order business logic
+|- web/          Controllers, DTOs, validation, and exception handling
+|- exception/    Domain-specific exceptions
 ```
 
----
+## Run locally
 
-## Default users (seeded on startup)
+Requirements: Java 21, Maven, and PostgreSQL.
 
-| Username | Password | Role |
-|----------|----------|------|
-| `admin` | `admin123` | `ADMIN` |
-| `user` | `user123` | `USER` |
-
-Change these before any real deployment.
-
----
-
-## Run locally (Maven + PostgreSQL)
-
-1. Create DB:
-
-```sql
-CREATE DATABASE stock_order_payment;
-```
-
-2. Configure env (optional; defaults work for local demo):
-
-```bash
-# Windows PowerShell examples
+```powershell
 $env:SPRING_PROFILES_ACTIVE="dev"
 $env:DB_URL="jdbc:postgresql://localhost:5432/stock_order_payment"
 $env:DB_USERNAME="postgres"
 $env:DB_PASSWORD="postgres"
-```
-
-3. Start:
-
-```bash
 mvn spring-boot:run
 ```
 
-If you already had Hibernate-created tables, either drop them or rely on Flyway `baseline-on-migrate` (enabled in `dev`).
+Swagger UI: [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html)
 
-4. Swagger: [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html)
-
-5. Login in Swagger → Authorize with `Bearer <token>` → call product/stock APIs.
-
----
-
-## Run with Docker Compose
+### Docker Compose
 
 ```bash
 docker compose up --build
 ```
 
-- App: `http://localhost:8080`
-- Swagger: `http://localhost:8080/swagger-ui/index.html`
-- DB: PostgreSQL on `localhost:5432`
-
----
-
-## Example requests
-
-```bash
-# Login
-curl -X POST http://localhost:8080/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d "{\"username\":\"admin\",\"password\":\"admin123\"}"
-
-# Create product (use accessToken from login)
-curl -X POST http://localhost:8080/api/v1/products \
-  -H "Authorization: Bearer <TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d "{\"name\":\"Laptop\",\"sku\":\"LAP-001\",\"price\":29999.99}"
-
-# Create stock
-curl -X POST http://localhost:8080/api/v1/products/1/stock \
-  -H "Authorization: Bearer <TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d "{\"quantity\":100}"
-
-# Stock in / out
-curl -X POST http://localhost:8080/api/v1/products/1/stock/in \
-  -H "Authorization: Bearer <TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d "{\"quantity\":10,\"note\":\"Purchase\"}"
-```
-
----
+- Application: `http://localhost:8080`
+- Swagger UI: `http://localhost:8080/swagger-ui/index.html`
+- PostgreSQL: `localhost:5432`
 
 ## Tests
 
@@ -206,22 +118,35 @@ curl -X POST http://localhost:8080/api/v1/products/1/stock/in \
 mvn test
 ```
 
-Covers service unit tests (Mockito) and controller/auth integration tests (`@SpringBootTest` + MockMvc, `test` profile with H2).
+The suite covers service unit tests, controller/authentication integration tests, order persistence, and stock-reservation behavior.
 
----
+## Roadmap
 
-## Configuration profiles
+- [x] Product and stock vertical slices
+- [x] Flyway migrations and environment profiles
+- [x] Dockerized local run path
+- [x] Spring Security, JWT, and RBAC
+- [x] Automated unit and integration tests
+- [x] Inventory transaction history
+- [x] Order domain model, persistence, service logic, and reservation tests
+- [ ] Order REST controller and API documentation
+- [ ] Payment provider simulation and asynchronous callback
+- [ ] Pagination and filtering
+- [ ] Optional Redis/Kafka integration
 
-| Profile | Purpose |
-|---------|---------|
-| `dev` (default) | PostgreSQL + Flyway + SQL logging |
-| `test` | In-memory H2, Flyway off, `ddl-auto: create-drop` |
-| `prod` | Env-based DB credentials, quieter logging |
+Progress details: [TICKETS.md](TICKETS.md)
 
-JWT secret: `app.jwt.secret` / `JWT_SECRET` (must be long enough for HS256).
+## Demo credentials
 
----
+The application seeds local demo users:
+
+| Username | Password | Role |
+|---|---|---|
+| `admin` | `admin123` | `ADMIN` |
+| `user` | `user123` | `USER` |
+
+These credentials are for local development only and must be changed before any real deployment.
 
 ## License
 
-Portfolio / learning project.
+Portfolio and learning project.
