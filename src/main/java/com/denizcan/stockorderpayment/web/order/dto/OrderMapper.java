@@ -22,7 +22,9 @@ public final class OrderMapper {
                 order.getTotalAmount(),
                 order.getCreatedAt(),
                 order.getUpdatedAt(),
-                items
+                items,
+                order.getSource(),
+                order.getExternalOrderId()
         );
     }
 

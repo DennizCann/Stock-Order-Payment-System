@@ -1,6 +1,7 @@
 package com.denizcan.stockorderpayment.web.order.dto;
 
 import com.denizcan.stockorderpayment.domain.order.OrderStatus;
+import com.denizcan.stockorderpayment.domain.order.OrderSource;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -13,6 +14,8 @@ public record OrderResponse(
         BigDecimal totalAmount,
         Instant createdAt,
         Instant updatedAt,
-        List<OrderItemResponse> items
+        List<OrderItemResponse> items,
+        OrderSource source,
+        String externalOrderId
 ) {
 }

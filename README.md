@@ -2,7 +2,9 @@
 
 A portfolio backend built with Java 21 and Spring Boot 3.4 to model product, stock, inventory, order, and payment workflows.
 
-> **Work in progress:** Product, stock, inventory history, authentication, and the order-domain foundation are implemented. The order REST API is still in progress; payment integration is planned.
+> **Work in progress:** The central operations panel, order REST API, safe stock reservations,
+> channel-order idempotency, and five independently running sales-channel simulators are implemented.
+> Shipment/cargo simulation and payment completion are planned. See [the local demo guide](docs/DEMO.md).
 
 ## Current status
 
@@ -12,7 +14,11 @@ A portfolio backend built with Java 21 and Spring Boot 3.4 to model product, sto
 | Product | Done | Create, list, and get by id |
 | Stock | Done | Create, query, adjust, stock-in, and stock-out |
 | Inventory history | Done | Traceable transaction log per product |
-| Order | In progress | Domain model, persistence, DTOs, service logic, stock reservation, and tests |
+| Order | Done for initial flow | Authenticated create/read, owner isolation, concurrent stock reservations |
+| Channel integration | Demo implemented | SKU-based import, duplicate detection, versioned stock snapshots, manual synchronization |
+| Operations panel | Initial version | Product/stock entry, channel synchronization, aggregate order list |
+| External simulators | Demo implemented | Separate Trendyol, Hepsiburada, n11, webstore and branch processes |
+| Cargo | Planned | Separate carrier simulator, shipment creation and tracking |
 | Payment | Planned | Provider simulation and asynchronous callback flow |
 
 ## Technical highlights
@@ -53,7 +59,22 @@ A portfolio backend built with Java 21 and Spring Boot 3.4 to model product, sto
 | `POST` | `/api/v1/products/{productId}/stock/out` | `ADMIN` |
 | `GET` | `/api/v1/products/{productId}/inventory-transactions` | `USER`, `ADMIN` |
 
-The order REST controller is not yet exposed publicly.
+### Orders and operations
+
+| Method | Endpoint | Access |
+|---|---|---|
+| POST | `/api/v1/orders` | USER, ADMIN; identity is taken from authentication |
+| GET | `/api/v1/orders` | Own orders |
+| GET | `/api/v1/orders/{id}` | Own order |
+| GET | `/api/v1/operations/orders` | ADMIN; all channels |
+| POST | `/api/v1/operations/channels/{source}/orders` | ADMIN; idempotent import by source and external id |
+| POST | `/api/v1/operations/channels/import` | ADMIN; import pending orders over HTTP |
+| POST | `/api/v1/operations/channels/sync-stock` | ADMIN; send versioned stock snapshots |
+
+Public order requests contain `items` with `productId` and `quantity`; user ids are
+not accepted as an ownership authority. Channel requests contain `externalOrderId`
+and items with `sku` and `quantity`. Current external line prices use the central
+catalog. External provider-specific adapters are outside the demo's current scope.
 
 ## Tech stack
 
@@ -129,7 +150,13 @@ The suite covers service unit tests, controller/authentication integration tests
 - [x] Automated unit and integration tests
 - [x] Inventory transaction history
 - [x] Order domain model, persistence, service logic, and reservation tests
-- [ ] Order REST controller and API documentation
+- [x] Order REST controller and API documentation
+- [x] Pessimistic stock locking and consistent lock ordering
+- [x] Idempotent channel import and payload conflict detection
+- [x] Central operations panel and five sales-channel simulator applications
+- [x] Versioned stock synchronization and local HTTP demo verification
+- [ ] Automatic polling, durable retries and provider-specific adapters
+- [ ] Cargo simulator, shipment lifecycle and tracking
 - [ ] Payment provider simulation and asynchronous callback
 - [ ] Pagination and filtering
 - [ ] Optional Redis/Kafka integration
@@ -150,3 +177,6 @@ These credentials are for local development only and must be changed before any 
 ## License
 
 Portfolio and learning project.
+
+Developed with AI assistance. Work is reviewed in feature branches and is intended
+to be studied and explained by the project owner. See [delivery notes](docs/delivery/01-order-api.md).

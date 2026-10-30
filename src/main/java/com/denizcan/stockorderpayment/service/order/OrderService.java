@@ -2,8 +2,10 @@ package com.denizcan.stockorderpayment.service.order;
 
 import com.denizcan.stockorderpayment.domain.order.Order;
 import com.denizcan.stockorderpayment.domain.order.OrderItem;
+import com.denizcan.stockorderpayment.domain.order.OrderSource;
 import com.denizcan.stockorderpayment.domain.product.Product;
 import com.denizcan.stockorderpayment.exception.InvalidOrderException;
+import com.denizcan.stockorderpayment.exception.OrderNotFoundException;
 import com.denizcan.stockorderpayment.exception.ProductNotFoundException;
 import com.denizcan.stockorderpayment.repository.order.OrderRepository;
 import com.denizcan.stockorderpayment.repository.product.ProductRepository;
@@ -35,16 +37,29 @@ public class OrderService {
 
     @Transactional
     public OrderResponse create(CreateOrderRequest request) {
+        return createOrder(request, OrderSource.INTERNAL, null, null);
+    }
+
+    @Transactional
+    public OrderResponse createFromChannel(CreateOrderRequest request, OrderSource source,
+                                           String externalId, String payloadHash) {
+        return createOrder(request, source, externalId, payloadHash);
+    }
+
+    private OrderResponse createOrder(CreateOrderRequest request, OrderSource source,
+                                      String externalId, String payloadHash) {
         Map<Long, Integer> quantitiesByProductId = mergeItemQuantities(request.items());
         Map<Long, Product> productsById = loadProducts(quantitiesByProductId.keySet());
 
         Order order = new Order(request.userId());
+        order.assignExternalReference(source, externalId, payloadHash);
         quantitiesByProductId.forEach((productId, quantity) -> {
             Product product = productsById.get(productId);
             order.addItem(new OrderItem(productId, quantity, product.getPrice()));
         });
 
         Order saved = orderRepository.save(order);
+        if (externalId != null) orderRepository.flush();
         reserveStockForOrder(saved.getId(), quantitiesByProductId);
 
         log.info("Created order id={} userId={} total={} itemCount={}",
@@ -54,9 +69,27 @@ public class OrderService {
     }
 
     private void reserveStockForOrder(Long orderId, Map<Long, Integer> quantitiesByProductId) {
-        quantitiesByProductId.forEach((productId, quantity) ->
-                stockService.reserve(productId, quantity, "Reserved for order " + orderId)
-        );
+        quantitiesByProductId.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .forEach(item -> stockService.reserve(item.getKey(), item.getValue(),
+                        "Reserved for order " + orderId));
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrderResponse> findAllForUser(Long userId) {
+        return orderRepository.findAllByUserIdOrderByCreatedAtDesc(userId).stream()
+                .map(OrderMapper::toResponse).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrderResponse> findAllForOperations() {
+        return orderRepository.findAllByOrderByCreatedAtDesc().stream().map(OrderMapper::toResponse).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public OrderResponse findByIdForUser(Long id, Long userId) {
+        return orderRepository.findByIdAndUserId(id, userId).map(OrderMapper::toResponse)
+                .orElseThrow(() -> new OrderNotFoundException(id));
     }
 
     private Map<Long, Integer> mergeItemQuantities(List<CreateOrderItemRequest> items) {
@@ -68,7 +101,11 @@ public class OrderService {
             if (item.productId() == null) {
                 throw new InvalidOrderException("Product id is required");
             }
-            merged.merge(item.productId(), item.quantity(), Integer::sum);
+            try {
+                merged.merge(item.productId(), item.quantity(), Math::addExact);
+            } catch (ArithmeticException ex) {
+                throw new InvalidOrderException("Combined item quantity exceeds the supported limit");
+            }
         }
         return merged;
     }

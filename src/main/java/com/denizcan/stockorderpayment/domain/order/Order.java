@@ -10,6 +10,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -21,7 +22,8 @@ import java.util.Collections;
 import java.util.List;
 
 @Entity
-@Table(name = "orders")
+@Table(name = "orders", uniqueConstraints = @UniqueConstraint(name = "uk_order_source_external_id",
+        columnNames = {"source", "external_order_id"}))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Order {
@@ -32,6 +34,16 @@ public class Order {
 
     @Column(name = "user_id", nullable = false)
     private Long userId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 32)
+    private OrderSource source = OrderSource.INTERNAL;
+
+    @Column(name = "external_order_id", length = 128)
+    private String externalOrderId;
+
+    @Column(name = "external_payload_hash", length = 64)
+    private String externalPayloadHash;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
@@ -63,6 +75,12 @@ public class Order {
         items.add(item);
         recalculateTotal();
         touch();
+    }
+
+    public void assignExternalReference(OrderSource source, String externalOrderId, String payloadHash) {
+        this.source = source;
+        this.externalOrderId = externalOrderId;
+        this.externalPayloadHash = payloadHash;
     }
 
     public List<OrderItem> getItems() {

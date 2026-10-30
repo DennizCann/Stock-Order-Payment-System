@@ -10,14 +10,21 @@
 | 6 | Security, JWT, and roles | Done | Login, `ADMIN`/`USER`, seeded demo users |
 | 7 | Unit and integration tests | Done | Service tests and MockMvc integration tests |
 | 8 | Inventory history | Done | Traceable stock movements and query API |
-| 9 | Order domain and stock reservation | In progress | Model, persistence, DTOs, service, migrations, and tests implemented; REST controller pending |
+| 9 | Order domain and stock reservation | Done for initial flow | REST API, owner isolation, transactional reservations, row locking and concurrency tests |
 | 10 | Payment simulation and callback | Planned | Provider abstraction and asynchronous callback flow |
 | 11 | Pagination and filtering | Planned | Product list improvements |
 | 12 | Optional Redis/Kafka integration | Planned | Add only when supported by a concrete use case |
+| 13 | Channel order intake | Initial demo done | Five sources, SKU mapping, duplicate detection, payload conflicts |
+| 14 | Separate channel simulators | Initial demo done | Five processes share a lightweight simulator library |
+| 15 | Operations panel | Initial demo done | Product/stock management, channel import/sync, aggregate orders |
+| 16 | Cargo integration and simulator | Planned | Shipment creation, label, tracking and delivery updates |
 
 ## Current priority
 
-1. Expose the order workflow through a REST controller.
-2. Document order endpoints in OpenAPI and the README.
-3. Complete end-to-end order integration tests.
-4. Implement the payment provider simulation and asynchronous callback flow.
+1. Owner review of the current local feature branch; prepare the pull request after review.
+2. Add the separate cargo simulator and central shipment workflow.
+3. Add cancellation, completion, branch-sale settlement and reservation release/consumption.
+4. Add automatic polling, durable retry visibility and stock synchronization recovery.
+5. Implement payment simulation and callbacks where required by the company-store flow.
+
+Optional Redis/Kafka is not selected for this delivery.

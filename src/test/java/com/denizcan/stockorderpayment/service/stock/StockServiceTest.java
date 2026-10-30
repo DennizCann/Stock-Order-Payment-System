@@ -99,7 +99,7 @@ class StockServiceTest {
     @Test
     void updateQuantity_shouldSetNewValueAndRecordAdjustment() {
         Stock stock = new Stock(1L, 50);
-        when(stockRepository.findByProductId(1L)).thenReturn(Optional.of(stock));
+        when(stockRepository.findByProductIdForUpdate(1L)).thenReturn(Optional.of(stock));
 
         StockResponse response = stockService.updateQuantity(1L, new UpdateStockRequest(80));
 
@@ -116,7 +116,7 @@ class StockServiceTest {
     @Test
     void stockOut_shouldThrow_whenInsufficient() {
         Stock stock = new Stock(1L, 5);
-        when(stockRepository.findByProductId(1L)).thenReturn(Optional.of(stock));
+        when(stockRepository.findByProductIdForUpdate(1L)).thenReturn(Optional.of(stock));
 
         assertThatThrownBy(() -> stockService.stockOut(1L, new StockMovementRequest(10, "order")))
                 .isInstanceOf(InsufficientStockException.class);
@@ -126,7 +126,7 @@ class StockServiceTest {
     void stockOut_shouldThrow_whenAvailableIsReducedByReservation() {
         Stock stock = new Stock(1L, 10);
         stock.reserve(8);
-        when(stockRepository.findByProductId(1L)).thenReturn(Optional.of(stock));
+        when(stockRepository.findByProductIdForUpdate(1L)).thenReturn(Optional.of(stock));
 
         assertThatThrownBy(() -> stockService.stockOut(1L, new StockMovementRequest(5, "order")))
                 .isInstanceOf(InsufficientStockException.class);
@@ -135,7 +135,7 @@ class StockServiceTest {
     @Test
     void stockIn_shouldIncreaseQuantity() {
         Stock stock = new Stock(1L, 20);
-        when(stockRepository.findByProductId(1L)).thenReturn(Optional.of(stock));
+        when(stockRepository.findByProductIdForUpdate(1L)).thenReturn(Optional.of(stock));
 
         StockResponse response = stockService.stockIn(1L, new StockMovementRequest(15, "purchase"));
 
@@ -152,7 +152,7 @@ class StockServiceTest {
     @Test
     void reserve_shouldIncreaseReservedAndRecordReservation() {
         Stock stock = new Stock(1L, 20);
-        when(stockRepository.findByProductId(1L)).thenReturn(Optional.of(stock));
+        when(stockRepository.findByProductIdForUpdate(1L)).thenReturn(Optional.of(stock));
 
         StockResponse response = stockService.reserve(1L, 7, "Reserved for order 9");
 
@@ -171,7 +171,7 @@ class StockServiceTest {
     @Test
     void reserve_shouldThrow_whenInsufficientAvailable() {
         Stock stock = new Stock(1L, 5);
-        when(stockRepository.findByProductId(1L)).thenReturn(Optional.of(stock));
+        when(stockRepository.findByProductIdForUpdate(1L)).thenReturn(Optional.of(stock));
 
         assertThatThrownBy(() -> stockService.reserve(1L, 6, "order"))
                 .isInstanceOf(InsufficientStockException.class);
@@ -182,7 +182,7 @@ class StockServiceTest {
     void release_shouldDecreaseReservedAndIncreaseAvailable() {
         Stock stock = new Stock(1L, 20);
         stock.reserve(8);
-        when(stockRepository.findByProductId(1L)).thenReturn(Optional.of(stock));
+        when(stockRepository.findByProductIdForUpdate(1L)).thenReturn(Optional.of(stock));
 
         StockResponse response = stockService.release(1L, 5, "Released for cancelled order 3");
 
@@ -202,7 +202,7 @@ class StockServiceTest {
     void release_shouldThrow_whenReleasingMoreThanReserved() {
         Stock stock = new Stock(1L, 10);
         stock.reserve(2);
-        when(stockRepository.findByProductId(1L)).thenReturn(Optional.of(stock));
+        when(stockRepository.findByProductIdForUpdate(1L)).thenReturn(Optional.of(stock));
 
         assertThatThrownBy(() -> stockService.release(1L, 3, "order"))
                 .isInstanceOf(InvalidStockReservationException.class);
@@ -213,7 +213,7 @@ class StockServiceTest {
     void consumeReserved_shouldDecreaseQuantityAndReserved() {
         Stock stock = new Stock(1L, 20);
         stock.reserve(9);
-        when(stockRepository.findByProductId(1L)).thenReturn(Optional.of(stock));
+        when(stockRepository.findByProductIdForUpdate(1L)).thenReturn(Optional.of(stock));
 
         StockResponse response = stockService.consumeReserved(1L, 6, "Consumed for paid order 11");
 
@@ -233,7 +233,7 @@ class StockServiceTest {
     void consumeReserved_shouldThrow_whenConsumingMoreThanReserved() {
         Stock stock = new Stock(1L, 15);
         stock.reserve(4);
-        when(stockRepository.findByProductId(1L)).thenReturn(Optional.of(stock));
+        when(stockRepository.findByProductIdForUpdate(1L)).thenReturn(Optional.of(stock));
 
         assertThatThrownBy(() -> stockService.consumeReserved(1L, 5, "order"))
                 .isInstanceOf(InvalidStockReservationException.class);

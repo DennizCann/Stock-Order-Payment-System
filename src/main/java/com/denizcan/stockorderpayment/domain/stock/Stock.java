@@ -9,6 +9,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -37,6 +38,10 @@ public class Stock {
 
     @Column(name = "reserved_quantity", nullable = false)
     private int reservedQuantity;
+
+    @Version
+    @Column(nullable = false)
+    private long version;
 
     public Stock(Long productId, int quantity) {
         if (quantity < 0) {

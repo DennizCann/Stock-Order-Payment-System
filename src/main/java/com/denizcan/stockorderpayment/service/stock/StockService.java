@@ -60,7 +60,7 @@ public class StockService {
 
     @Transactional
     public StockResponse updateQuantity(Long productId, UpdateStockRequest request) {
-        Stock stock = stockRepository.findByProductId(productId)
+        Stock stock = stockRepository.findByProductIdForUpdate(productId)
                 .orElseThrow(() -> new StockNotFoundException(productId));
 
         int previous = stock.getQuantity();
@@ -80,7 +80,7 @@ public class StockService {
 
     @Transactional
     public StockResponse stockIn(Long productId, StockMovementRequest request) {
-        Stock stock = stockRepository.findByProductId(productId)
+        Stock stock = stockRepository.findByProductIdForUpdate(productId)
                 .orElseThrow(() -> new StockNotFoundException(productId));
 
         int previous = stock.getQuantity();
@@ -101,7 +101,7 @@ public class StockService {
 
     @Transactional
     public StockResponse stockOut(Long productId, StockMovementRequest request) {
-        Stock stock = stockRepository.findByProductId(productId)
+        Stock stock = stockRepository.findByProductIdForUpdate(productId)
                 .orElseThrow(() -> new StockNotFoundException(productId));
 
         int previous = stock.getQuantity();
@@ -130,7 +130,7 @@ public class StockService {
 
     @Transactional
     public StockResponse reserve(Long productId, int amount, String note) {
-        Stock stock = stockRepository.findByProductId(productId)
+        Stock stock = stockRepository.findByProductIdForUpdate(productId)
                 .orElseThrow(() -> new StockNotFoundException(productId));
 
         int previousAvailable = stock.getAvailableQuantity();
@@ -156,7 +156,7 @@ public class StockService {
 
     @Transactional
     public StockResponse release(Long productId, int amount, String note) {
-        Stock stock = stockRepository.findByProductId(productId)
+        Stock stock = stockRepository.findByProductIdForUpdate(productId)
                 .orElseThrow(() -> new StockNotFoundException(productId));
 
         int previousAvailable = stock.getAvailableQuantity();
@@ -182,7 +182,7 @@ public class StockService {
 
     @Transactional
     public StockResponse consumeReserved(Long productId, int amount, String note) {
-        Stock stock = stockRepository.findByProductId(productId)
+        Stock stock = stockRepository.findByProductIdForUpdate(productId)
                 .orElseThrow(() -> new StockNotFoundException(productId));
 
         int previousQuantity = stock.getQuantity();
