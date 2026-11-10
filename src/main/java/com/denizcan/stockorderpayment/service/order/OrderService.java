@@ -5,8 +5,7 @@ import com.denizcan.stockorderpayment.domain.order.OrderItem;
 import com.denizcan.stockorderpayment.domain.order.OrderSource;
 import com.denizcan.stockorderpayment.domain.product.Product;
 import com.denizcan.stockorderpayment.exception.InvalidOrderException;
-import com.denizcan.stockorderpayment.exception.OrderNotFoundException;
-import com.denizcan.stockorderpayment.exception.ProductNotFoundException;
+import com.denizcan.stockorderpayment.exception.NotFoundException;
 import com.denizcan.stockorderpayment.repository.order.OrderRepository;
 import com.denizcan.stockorderpayment.repository.product.ProductRepository;
 import com.denizcan.stockorderpayment.service.stock.StockService;
@@ -89,7 +88,7 @@ public class OrderService {
     @Transactional(readOnly = true)
     public OrderResponse findByIdForUser(Long id, Long userId) {
         return orderRepository.findByIdAndUserId(id, userId).map(OrderMapper::toResponse)
-                .orElseThrow(() -> new OrderNotFoundException(id));
+                .orElseThrow(() -> NotFoundException.order(id));
     }
 
     private Map<Long, Integer> mergeItemQuantities(List<CreateOrderItemRequest> items) {
@@ -117,7 +116,7 @@ public class OrderService {
 
         for (Long productId : productIds) {
             if (!byId.containsKey(productId)) {
-                throw new ProductNotFoundException(productId);
+                throw NotFoundException.product(productId);
             }
         }
         return byId;

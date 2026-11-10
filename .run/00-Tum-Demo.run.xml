@@ -1,0 +1,11 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="00 - Tum Demo" type="CompoundRunConfigurationType">
+    <toRun name="01 - Merkez" type="Application" />
+    <toRun name="02 - Trendyol" type="Application" />
+    <toRun name="03 - Hepsiburada" type="Application" />
+    <toRun name="04 - n11" type="Application" />
+    <toRun name="05 - Web Magaza" type="Application" />
+    <toRun name="06 - Sube" type="Application" />
+    <method v="2" />
+  </configuration>
+</component>

@@ -2,7 +2,7 @@ package com.denizcan.stockorderpayment.service.product;
 
 import com.denizcan.stockorderpayment.domain.product.Product;
 import com.denizcan.stockorderpayment.exception.DuplicateSkuException;
-import com.denizcan.stockorderpayment.exception.ProductNotFoundException;
+import com.denizcan.stockorderpayment.exception.NotFoundException;
 import com.denizcan.stockorderpayment.repository.product.ProductRepository;
 import com.denizcan.stockorderpayment.web.product.dto.CreateProductRequest;
 import com.denizcan.stockorderpayment.web.product.dto.ProductResponse;
@@ -35,7 +35,7 @@ public class ProductService {
     @Transactional(readOnly = true)
     public ProductResponse findById(Long id) {
         Product product = productRepository.findById(id)
-                .orElseThrow(() -> new ProductNotFoundException(id));
+                .orElseThrow(() -> NotFoundException.product(id));
         return ProductResponse.from(product);
     }
 

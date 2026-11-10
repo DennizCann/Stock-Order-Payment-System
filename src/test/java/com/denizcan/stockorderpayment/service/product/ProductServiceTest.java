@@ -2,7 +2,7 @@ package com.denizcan.stockorderpayment.service.product;
 
 import com.denizcan.stockorderpayment.domain.product.Product;
 import com.denizcan.stockorderpayment.exception.DuplicateSkuException;
-import com.denizcan.stockorderpayment.exception.ProductNotFoundException;
+import com.denizcan.stockorderpayment.exception.NotFoundException;
 import com.denizcan.stockorderpayment.repository.product.ProductRepository;
 import com.denizcan.stockorderpayment.web.product.dto.CreateProductRequest;
 import com.denizcan.stockorderpayment.web.product.dto.ProductResponse;
@@ -77,7 +77,8 @@ class ProductServiceTest {
         when(productRepository.findById(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> productService.findById(99L))
-                .isInstanceOf(ProductNotFoundException.class);
+                .isInstanceOf(NotFoundException.class)
+                .hasMessage("Product not found with id: 99");
     }
 
     @Test

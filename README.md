@@ -125,6 +125,12 @@ Swagger UI: [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/
 
 ### Docker Compose
 
+Set a private, random `JWT_SECRET` of at least 32 bytes. For first-time administrator
+setup, supply `APP_BOOTSTRAP_ADMIN_USERNAME` and `APP_BOOTSTRAP_ADMIN_PASSWORD`
+(at least 12 characters) through the deployment environment. Remove the two
+bootstrap variables after successful setup. The bootstrap creates an administrator
+under an unused name and leaves existing credentials intact.
+
 ```bash
 docker compose up --build
 ```
@@ -132,6 +138,11 @@ docker compose up --build
 - Application: `http://localhost:8080`
 - Swagger UI: `http://localhost:8080/swagger-ui/index.html`
 - PostgreSQL: `localhost:5432`
+
+An administrator can open **Kullanıcılar** in the panel to create a regular
+employee account and copy a single-use password setup link. The link expires after
+24 hours. Generating a fresh link for a pending account invalidates the previous link.
+Use the panel's shared address when creating a link for a different computer.
 
 ## Tests
 
@@ -165,7 +176,7 @@ Progress details: [TICKETS.md](TICKETS.md)
 
 ## Demo credentials
 
-The application seeds local demo users:
+The application seeds these users outside the `prod` profile:
 
 | Username | Password | Role |
 |---|---|---|

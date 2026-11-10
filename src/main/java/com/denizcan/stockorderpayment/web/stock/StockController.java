@@ -2,9 +2,8 @@ package com.denizcan.stockorderpayment.web.stock;
 
 import com.denizcan.stockorderpayment.service.stock.StockService;
 import com.denizcan.stockorderpayment.web.inventory.dto.StockMovementRequest;
-import com.denizcan.stockorderpayment.web.stock.dto.CreateStockRequest;
+import com.denizcan.stockorderpayment.web.stock.dto.StockQuantityRequest;
 import com.denizcan.stockorderpayment.web.stock.dto.StockResponse;
-import com.denizcan.stockorderpayment.web.stock.dto.UpdateStockRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -28,7 +27,7 @@ public class StockController {
     @ResponseStatus(HttpStatus.CREATED)
     public StockResponse create(
             @PathVariable Long productId,
-            @Valid @RequestBody CreateStockRequest request
+            @Valid @RequestBody StockQuantityRequest request
     ) {
         return stockService.create(productId, request);
     }
@@ -41,7 +40,7 @@ public class StockController {
     @PatchMapping
     public StockResponse updateQuantity(
             @PathVariable Long productId,
-            @Valid @RequestBody UpdateStockRequest request
+            @Valid @RequestBody StockQuantityRequest request
     ) {
         return stockService.updateQuantity(productId, request);
     }

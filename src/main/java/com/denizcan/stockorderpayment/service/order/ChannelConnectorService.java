@@ -11,6 +11,7 @@ import org.springframework.web.client.RestClient;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
 public class ChannelConnectorService {
@@ -18,6 +19,7 @@ public class ChannelConnectorService {
     private final ProductRepository products;
     private final StockRepository stocks;
     private final Map<OrderSource, RestClient> clients = new EnumMap<>(OrderSource.class);
+    private final AtomicBoolean importInProgress = new AtomicBoolean();
     public record InventorySnapshot(String sku, String name, BigDecimal price, int availableQuantity, long version) {}
     public record Result(OrderSource source, boolean success, int imported, String message) {}
 
@@ -51,6 +53,19 @@ public class ChannelConnectorService {
     }
 
     public List<Result> importPending(Long accountId) {
+        if (!importInProgress.compareAndSet(false, true)) {
+            return clients.keySet().stream()
+                    .map(source -> new Result(source, false, 0, "Order import already in progress"))
+                    .toList();
+        }
+        try {
+            return fetchPendingOrders(accountId);
+        } finally {
+            importInProgress.set(false);
+        }
+    }
+
+    private List<Result> fetchPendingOrders(Long accountId) {
         List<Result> results = new ArrayList<>();
         clients.forEach((source, client) -> {
             int imported = 0;

@@ -3,16 +3,14 @@ package com.denizcan.stockorderpayment.service.stock;
 import com.denizcan.stockorderpayment.domain.inventory.InventoryTransactionType;
 import com.denizcan.stockorderpayment.domain.stock.Stock;
 import com.denizcan.stockorderpayment.exception.InsufficientStockException;
-import com.denizcan.stockorderpayment.exception.ProductNotFoundException;
+import com.denizcan.stockorderpayment.exception.NotFoundException;
 import com.denizcan.stockorderpayment.exception.StockAlreadyExistsException;
-import com.denizcan.stockorderpayment.exception.StockNotFoundException;
 import com.denizcan.stockorderpayment.repository.product.ProductRepository;
 import com.denizcan.stockorderpayment.repository.stock.StockRepository;
 import com.denizcan.stockorderpayment.service.inventory.InventoryTransactionService;
 import com.denizcan.stockorderpayment.web.inventory.dto.StockMovementRequest;
-import com.denizcan.stockorderpayment.web.stock.dto.CreateStockRequest;
+import com.denizcan.stockorderpayment.web.stock.dto.StockQuantityRequest;
 import com.denizcan.stockorderpayment.web.stock.dto.StockResponse;
-import com.denizcan.stockorderpayment.web.stock.dto.UpdateStockRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -28,9 +26,9 @@ public class StockService {
     private final InventoryTransactionService inventoryTransactionService;
 
     @Transactional
-    public StockResponse create(Long productId, CreateStockRequest request) {
+    public StockResponse create(Long productId, StockQuantityRequest request) {
         if (!productRepository.existsById(productId)) {
-            throw new ProductNotFoundException(productId);
+            throw NotFoundException.product(productId);
         }
         if (stockRepository.existsByProductId(productId)) {
             throw new StockAlreadyExistsException(productId);
@@ -54,14 +52,14 @@ public class StockService {
     @Transactional(readOnly = true)
     public StockResponse findByProductId(Long productId) {
         Stock stock = stockRepository.findByProductId(productId)
-                .orElseThrow(() -> new StockNotFoundException(productId));
+                .orElseThrow(() -> NotFoundException.stock(productId));
         return StockResponse.from(stock);
     }
 
     @Transactional
-    public StockResponse updateQuantity(Long productId, UpdateStockRequest request) {
+    public StockResponse updateQuantity(Long productId, StockQuantityRequest request) {
         Stock stock = stockRepository.findByProductIdForUpdate(productId)
-                .orElseThrow(() -> new StockNotFoundException(productId));
+                .orElseThrow(() -> NotFoundException.stock(productId));
 
         int previous = stock.getQuantity();
         stock.setQuantity(request.quantity());
@@ -81,7 +79,7 @@ public class StockService {
     @Transactional
     public StockResponse stockIn(Long productId, StockMovementRequest request) {
         Stock stock = stockRepository.findByProductIdForUpdate(productId)
-                .orElseThrow(() -> new StockNotFoundException(productId));
+                .orElseThrow(() -> NotFoundException.stock(productId));
 
         int previous = stock.getQuantity();
         int updated = previous + request.quantity();
@@ -102,7 +100,7 @@ public class StockService {
     @Transactional
     public StockResponse stockOut(Long productId, StockMovementRequest request) {
         Stock stock = stockRepository.findByProductIdForUpdate(productId)
-                .orElseThrow(() -> new StockNotFoundException(productId));
+                .orElseThrow(() -> NotFoundException.stock(productId));
 
         int previous = stock.getQuantity();
         if (stock.getAvailableQuantity() < request.quantity()) {
@@ -131,7 +129,7 @@ public class StockService {
     @Transactional
     public StockResponse reserve(Long productId, int amount, String note) {
         Stock stock = stockRepository.findByProductIdForUpdate(productId)
-                .orElseThrow(() -> new StockNotFoundException(productId));
+                .orElseThrow(() -> NotFoundException.stock(productId));
 
         int previousAvailable = stock.getAvailableQuantity();
         stock.reserve(amount);
@@ -157,7 +155,7 @@ public class StockService {
     @Transactional
     public StockResponse release(Long productId, int amount, String note) {
         Stock stock = stockRepository.findByProductIdForUpdate(productId)
-                .orElseThrow(() -> new StockNotFoundException(productId));
+                .orElseThrow(() -> NotFoundException.stock(productId));
 
         int previousAvailable = stock.getAvailableQuantity();
         stock.release(amount);
@@ -183,7 +181,7 @@ public class StockService {
     @Transactional
     public StockResponse consumeReserved(Long productId, int amount, String note) {
         Stock stock = stockRepository.findByProductIdForUpdate(productId)
-                .orElseThrow(() -> new StockNotFoundException(productId));
+                .orElseThrow(() -> NotFoundException.stock(productId));
 
         int previousQuantity = stock.getQuantity();
         stock.consumeReserved(amount);

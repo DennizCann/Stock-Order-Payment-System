@@ -4,7 +4,7 @@ import com.denizcan.stockorderpayment.domain.order.Order;
 import com.denizcan.stockorderpayment.domain.order.OrderStatus;
 import com.denizcan.stockorderpayment.domain.product.Product;
 import com.denizcan.stockorderpayment.exception.InvalidOrderException;
-import com.denizcan.stockorderpayment.exception.ProductNotFoundException;
+import com.denizcan.stockorderpayment.exception.NotFoundException;
 import com.denizcan.stockorderpayment.repository.order.OrderRepository;
 import com.denizcan.stockorderpayment.repository.product.ProductRepository;
 import com.denizcan.stockorderpayment.service.stock.StockService;
@@ -99,7 +99,8 @@ class OrderServiceTest {
         );
 
         assertThatThrownBy(() -> orderService.create(request))
-                .isInstanceOf(ProductNotFoundException.class);
+                .isInstanceOf(NotFoundException.class)
+                .hasMessage("Product not found with id: 99");
 
         verify(orderRepository, never()).save(any());
         verify(stockService, never()).reserve(anyLong(), anyInt(), anyString());

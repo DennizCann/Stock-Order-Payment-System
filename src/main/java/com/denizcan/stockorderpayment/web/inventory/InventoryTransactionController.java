@@ -1,6 +1,6 @@
 package com.denizcan.stockorderpayment.web.inventory;
 
-import com.denizcan.stockorderpayment.exception.ProductNotFoundException;
+import com.denizcan.stockorderpayment.exception.NotFoundException;
 import com.denizcan.stockorderpayment.repository.product.ProductRepository;
 import com.denizcan.stockorderpayment.service.inventory.InventoryTransactionService;
 import com.denizcan.stockorderpayment.web.inventory.dto.InventoryTransactionResponse;
@@ -23,7 +23,7 @@ public class InventoryTransactionController {
     @GetMapping
     public List<InventoryTransactionResponse> findByProductId(@PathVariable Long productId) {
         if (!productRepository.existsById(productId)) {
-            throw new ProductNotFoundException(productId);
+            throw NotFoundException.product(productId);
         }
         return inventoryTransactionService.findByProductId(productId);
     }

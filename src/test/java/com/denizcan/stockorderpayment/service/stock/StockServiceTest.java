@@ -4,16 +4,14 @@ import com.denizcan.stockorderpayment.domain.inventory.InventoryTransactionType;
 import com.denizcan.stockorderpayment.domain.stock.Stock;
 import com.denizcan.stockorderpayment.exception.InsufficientStockException;
 import com.denizcan.stockorderpayment.exception.InvalidStockReservationException;
-import com.denizcan.stockorderpayment.exception.ProductNotFoundException;
+import com.denizcan.stockorderpayment.exception.NotFoundException;
 import com.denizcan.stockorderpayment.exception.StockAlreadyExistsException;
-import com.denizcan.stockorderpayment.exception.StockNotFoundException;
 import com.denizcan.stockorderpayment.repository.product.ProductRepository;
 import com.denizcan.stockorderpayment.repository.stock.StockRepository;
 import com.denizcan.stockorderpayment.service.inventory.InventoryTransactionService;
 import com.denizcan.stockorderpayment.web.inventory.dto.StockMovementRequest;
-import com.denizcan.stockorderpayment.web.stock.dto.CreateStockRequest;
+import com.denizcan.stockorderpayment.web.stock.dto.StockQuantityRequest;
 import com.denizcan.stockorderpayment.web.stock.dto.StockResponse;
-import com.denizcan.stockorderpayment.web.stock.dto.UpdateStockRequest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -54,7 +52,7 @@ class StockServiceTest {
         when(stockRepository.existsByProductId(1L)).thenReturn(false);
         when(stockRepository.save(any(Stock.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        StockResponse response = stockService.create(1L, new CreateStockRequest(100));
+        StockResponse response = stockService.create(1L, new StockQuantityRequest(100));
 
         assertThat(response.productId()).isEqualTo(1L);
         assertThat(response.quantity()).isEqualTo(100);
@@ -72,8 +70,9 @@ class StockServiceTest {
     void create_shouldThrow_whenProductMissing() {
         when(productRepository.existsById(99L)).thenReturn(false);
 
-        assertThatThrownBy(() -> stockService.create(99L, new CreateStockRequest(10)))
-                .isInstanceOf(ProductNotFoundException.class);
+        assertThatThrownBy(() -> stockService.create(99L, new StockQuantityRequest(10)))
+                .isInstanceOf(NotFoundException.class)
+                .hasMessage("Product not found with id: 99");
 
         verify(stockRepository, never()).save(any());
         verify(inventoryTransactionService, never()).record(anyLong(), any(), anyInt(), anyInt(), anyString());
@@ -84,7 +83,7 @@ class StockServiceTest {
         when(productRepository.existsById(1L)).thenReturn(true);
         when(stockRepository.existsByProductId(1L)).thenReturn(true);
 
-        assertThatThrownBy(() -> stockService.create(1L, new CreateStockRequest(10)))
+        assertThatThrownBy(() -> stockService.create(1L, new StockQuantityRequest(10)))
                 .isInstanceOf(StockAlreadyExistsException.class);
     }
 
@@ -93,7 +92,8 @@ class StockServiceTest {
         when(stockRepository.findByProductId(1L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> stockService.findByProductId(1L))
-                .isInstanceOf(StockNotFoundException.class);
+                .isInstanceOf(NotFoundException.class)
+                .hasMessage("Stock not found for product id: 1");
     }
 
     @Test
@@ -101,7 +101,7 @@ class StockServiceTest {
         Stock stock = new Stock(1L, 50);
         when(stockRepository.findByProductIdForUpdate(1L)).thenReturn(Optional.of(stock));
 
-        StockResponse response = stockService.updateQuantity(1L, new UpdateStockRequest(80));
+        StockResponse response = stockService.updateQuantity(1L, new StockQuantityRequest(80));
 
         assertThat(response.quantity()).isEqualTo(80);
         verify(inventoryTransactionService).record(

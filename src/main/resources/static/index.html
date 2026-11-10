@@ -1,22 +1,749 @@
-<!doctype html><html lang="tr"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Satış Operasyon Merkezi</title>
-<style>:root{font:15px system-ui;color:#192d4c;background:#f4f7fc}body{margin:0}.top{background:#14294a;color:white;padding:24px 5%}main{max-width:1250px;margin:28px auto;padding:0 24px}.card{background:white;border:1px solid #e2e8f2;border-radius:12px;padding:24px;margin:20px 0}h1{margin:0;font-size:25px}h2{font-size:19px;margin-top:0}.muted{color:#667891}button,input{font:inherit;border:1px solid #cad4e4;border-radius:6px;padding:10px;margin:4px}button{background:#2058cf;color:white;cursor:pointer}button:disabled{opacity:.45;cursor:wait}table{width:100%;border-collapse:collapse}th,td{padding:12px;text-align:left;border-bottom:1px solid #edf1f7}th{color:#64758e;font-size:13px}#notice{white-space:pre-wrap;max-height:180px;overflow:auto}.channels{display:flex;gap:12px;flex-wrap:wrap}.channels a{background:#eef3ff;padding:12px;border-radius:8px;color:#244985;text-decoration:none}.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}@media(max-width:800px){.grid{grid-template-columns:1fr}.scroll{overflow:auto}}.badge{background:#e7f5ee;color:#196a46;padding:5px;border-radius:5px}</style>
-<header class="top"><h1>Satış Operasyon Merkezi</h1><p>Kanallar, siparişler ve stoklar tek panelde · Demo</p></header>
-<main><section class="card" id="login"><h2>Yönetici girişi</h2><form id="loginForm"><input id="username" autocomplete="username" placeholder="Kullanıcı adı" value="admin" required><input id="password" autocomplete="current-password" type="password" placeholder="Parola" required><button>Giriş yap</button></form><p class="muted">Yerel demo hesabı: admin / admin123</p></section>
-<div id="workspace" hidden><section class="card"><h2>Satış kanalları</h2><div class="channels"><a href="http://127.0.0.1:8081" target="_blank" rel="noopener">Trendyol Demo ↗</a><a href="http://127.0.0.1:8082" target="_blank" rel="noopener">Hepsiburada Demo ↗</a><a href="http://127.0.0.1:8083" target="_blank" rel="noopener">n11 Demo ↗</a><a href="http://127.0.0.1:8084" target="_blank" rel="noopener">Kendi mağazamız ↗</a><a href="http://127.0.0.1:8085" target="_blank" rel="noopener">Şube satışları ↗</a></div><p class="muted">Dış uygulamalar bağımsız süreçlerdir. Gerçek pazaryeri bağlantısı yoktur.</p><button id="sync">Stokları kanallara gönder</button><button id="import">Kanallardaki siparişleri al</button><button id="refresh">Paneli yenile</button><button id="logout">Çıkış</button><p class="muted">Bu sürümde tarama ve eşitleme elle başlatılır. Siparişleri aldıktan sonra güncel stokları kanallara gönderin.</p></section>
-<div class="grid"><section class="card"><h2>Ürün ekle</h2><form id="productForm"><input id="productName" placeholder="Ürün adı" required><input id="productSku" placeholder="SKU" required maxlength="64"><input id="productPrice" placeholder="Fiyat" type="number" min="0.01" step=".01" required><button>Ürünü kaydet</button></form></section>
-<section class="card"><h2>Stok belirle</h2><form id="stockForm"><input id="productId" placeholder="Ürün ID" type="number" min="1" required><input id="stockQuantity" placeholder="Fiziksel stok" type="number" min="0" required><button>Stoku kaydet / güncelle</button></form></section></div>
-<section class="card scroll"><h2>Stok görünümü</h2><table><thead><tr><th>ID</th><th>SKU</th><th>Ürün</th><th>Fiziksel</th><th>Ayrılmış</th><th>Satılabilir</th></tr></thead><tbody id="stockRows"></tbody></table></section>
-<section class="card scroll"><h2>Tüm kanallardan siparişler</h2><table><thead><tr><th>ID</th><th>Kanal</th><th>Kanal sipariş no.</th><th>Durum</th><th>Toplam</th><th>Tarih</th></tr></thead><tbody id="orderRows"></tbody></table></section></div>
-<section class="card"><h2>İşlem sonucu</h2><div id="notice" role="status">Yönetici hesabıyla giriş yapın.</div></section></main>
-<script>
-let token='';const $=id=>document.getElementById(id);const note=text=>$('notice').textContent=text;
-function cell(row,value){const td=document.createElement('td');td.textContent=value??'—';row.append(td)}
-async function api(path,method='GET',body){const response=await fetch('/api/v1'+path,{method,headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},...(body!==undefined?{body:JSON.stringify(body)}:{})});const data=await response.text();let result;try{result=data?JSON.parse(data):null}catch{result=null}if(!response.ok){const error=Error(result?.detail||'İstek reddedildi ('+response.status+')');error.status=response.status;throw error}return result}
-async function refresh(){const [products,orders]=await Promise.all([api('/products'),api('/operations/orders')]);$('stockRows').replaceChildren();for(const product of products){let stock;try{stock=await api('/products/'+product.id+'/stock')}catch(error){if(error.status!==404)throw error;stock={quantity:'Tanımlanmamış',reservedQuantity:'—',availableQuantity:'—'}}const row=document.createElement('tr');[product.id,product.sku,product.name,stock.quantity,stock.reservedQuantity,stock.availableQuantity].forEach(v=>cell(row,v));$('stockRows').append(row)}$('orderRows').replaceChildren();for(const order of orders){const row=document.createElement('tr');[order.id,order.source,order.externalOrderId,order.status,order.totalAmount,new Date(order.createdAt).toLocaleString('tr-TR')].forEach(v=>cell(row,v));$('orderRows').append(row)}}
-async function action(button,work){button.disabled=true;try{await work()}catch(error){note(error.message)}finally{button.disabled=false}}
-$('loginForm').onsubmit=e=>{e.preventDefault();action(e.submitter,async()=>{const data=await api('/auth/login','POST',{username:$('username').value,password:$('password').value});token=data.accessToken;$('password').value='';try{await refresh();$('login').hidden=true;$('workspace').hidden=false;note('Oturum açıldı.')}catch(error){token='';throw error}})};
-$('logout').onclick=()=>{token='';$('workspace').hidden=true;$('login').hidden=false;note('Oturum kapatıldı.')};$('refresh').onclick=e=>action(e.target,refresh);
-for(const [id,path] of [['sync','sync-stock'],['import','import']]){$(id).onclick=e=>action(e.target,async()=>{const results=await api('/operations/channels/'+path,'POST');note(results.map(r=>r.source+': '+(r.success?'Tamam':'Dikkat')+' — '+r.message+' (alınan: '+r.imported+')').join('\n'));await refresh()})}
-$('productForm').onsubmit=e=>{e.preventDefault();action(e.submitter,async()=>{const product=await api('/products','POST',{name:$('productName').value,sku:$('productSku').value,price:Number($('productPrice').value)});$('productId').value=product.id;note('Ürün eklendi: '+product.id);await refresh()})};
-$('stockForm').onsubmit=e=>{e.preventDefault();action(e.submitter,async()=>{const path='/products/'+Number($('productId').value)+'/stock';let exists=true;try{await api(path)}catch(error){if(error.status===404)exists=false;else throw error}await api(path,exists?'PATCH':'POST',{quantity:Number($('stockQuantity').value)});note('Stok güncellendi. Kanallara stok göndererek eşitleyin.');await refresh()})};
-</script></html>
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Genel Bakış | Satış Operasyon Merkezi</title>
+  <style>
+    :root {
+      font: 15px/1.5 system-ui, sans-serif;
+      color: #18243b;
+      background: #f5f7fb;
+      --accent: #2056c7;
+      --muted: #596780;
+      --border: #e0e6ef;
+      --rail: #142139;
+      --radius: 14px;
+    }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    body { margin: 0; }
+    h1, h2, p { margin: 0; }
+    a { color: var(--accent); text-decoration: none; }
+    button, input { font: inherit; }
+    button {
+      min-height: 42px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      padding: 9px 14px;
+      font-weight: 650;
+      cursor: pointer;
+    }
+    button:disabled { opacity: .65; cursor: wait; }
+    :focus-visible { outline: 3px solid #72a4ff; outline-offset: 3px; }
+    .primary { color: white; background: var(--accent); }
+    .primary:hover { background: #1948a9; }
+    .secondary { color: #273954; background: white; border-color: var(--border); }
+    .secondary:hover { background: #edf3fe; }
+    .muted { color: var(--muted); }
+    .eyebrow { color: var(--accent); font-size: .75rem; font-weight: 750; letter-spacing: .10em; text-transform: uppercase; }
+    .icon { width: 19px; height: 19px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+    .brand { display: flex; align-items: center; gap: 11px; font-weight: 750; line-height: 1.25; }
+    .brand-icon { display: grid; place-items: center; background: #3168db; color: white; width: 38px; height: 38px; border-radius: 10px; flex: 0 0 auto; }
+    .brand small { display: block; margin-top: 3px; color: #9cadd0; font-size: .75rem; font-weight: 500; }
+    .login-screen { display: grid; min-height: 100dvh; place-items: center; padding: 24px; }
+    .login-card { width: min(100%, 410px); padding: 32px; }
+    .login-card .brand { margin-bottom: 28px; }
+    .login-card h1 { font-size: 1.7rem; margin: 8px 0; }
+    .login-card form { margin-top: 24px; }
+    .login-card .primary { width: 100%; }
+    label { display: grid; gap: 6px; color: #34445f; font-weight: 650; font-size: .87rem; }
+    input { width: 100%; min-height: 42px; padding: 9px 11px; border: 1px solid #cbd6e5; border-radius: 8px; background: white; color: #18243b; font-weight: 400; }
+    .form-stack { display: grid; gap: 14px; align-content: start; }
+    .error { color: #a52d35; }
+    .login-error:not(:empty) { margin-top: 12px; }
+    .account-form { max-width: 580px; }
+    .account-form .form-stack { padding: 0 19px 19px; }
+    .account-form .form-stack button { justify-self: start; }
+    .activation-success:not(:empty) { margin-top: 12px; color: #17623e; }
+    .shell { display: grid; grid-template-columns: 218px minmax(0, 1fr); min-height: 100dvh; }
+    .sidebar { display: flex; flex-direction: column; align-self: start; position: sticky; top: 0; min-height: 100dvh; padding: 25px 16px 18px; background: var(--rail); color: white; }
+    .sidebar .brand { padding: 0 6px; margin-bottom: 39px; }
+    .nav-label { color: #a3b2cb; font-size: .72rem; font-weight: 700; letter-spacing: .12em; margin: 0 10px 9px; text-transform: uppercase; }
+    .sidebar nav { display: grid; gap: 5px; }
+    .sidebar nav a { display: flex; align-items: center; gap: 11px; border-radius: 8px; padding: 10px; color: #c9d5ea; white-space: nowrap; }
+    .sidebar nav a:hover, .sidebar nav a.active { color: white; background: #263c60; }
+    .sidebar nav a.active { box-shadow: inset 3px 0 #78a7ff; }
+    .rail-footer { margin-top: auto; padding: 18px 10px 0; color: #a3b2cb; font-size: .78rem; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; min-height: 64px; gap: 16px; padding: 10px clamp(18px, 3vw, 40px); border-bottom: 1px solid var(--border); background: white; }
+    .topbar p { font-size: .86rem; color: var(--muted); }
+    .user-area { display: flex; align-items: center; gap: 11px; font-size: .86rem; white-space: nowrap; }
+    .user-area button { min-height: 36px; padding: 6px 11px; }
+    main { max-width: 1460px; margin: 0 auto; padding: 32px clamp(18px, 3vw, 40px) 48px; }
+    .hero { display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px; margin-bottom: 22px; }
+    .hero h1 { font-size: clamp(1.8rem, 3vw, 2.4rem); letter-spacing: -.035em; margin: 4px 0 5px; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .card { background: white; border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 2px 6px #1f385605; }
+    .metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
+    .metric { min-width: 0; padding: 16px; text-align: left; color: inherit; font-weight: 400; }
+    .metric:hover { border-color: #9ab7ef; }
+    .metric[aria-pressed="true"] { border-color: var(--accent); background: #f2f6ff; }
+    .metric-title { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: .84rem; font-weight: 650; }
+    .metric-icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 8px; background: #ebf2ff; color: var(--accent); flex: 0 0 auto; }
+    .metric-value { display: block; margin-top: 8px; font-size: 1.8rem; font-weight: 750; letter-spacing: -.04em; line-height: 1.2; font-variant-numeric: tabular-nums; }
+    .metric-hint { display: block; margin-top: 5px; color: var(--muted); font-size: .78rem; }
+    .change-positive { color: #17623e; }
+    .change-negative { color: #9a3038; }
+    .card-head { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 18px 19px 14px; }
+    h2 { font-size: 1.12rem; letter-spacing: -.01em; }
+    .card-head p { margin-top: 4px; font-size: .84rem; }
+    .section { margin-top: 18px; scroll-margin-top: 14px; }
+    .table-wrap { overflow: auto; }
+    table { width: 100%; border-collapse: collapse; white-space: nowrap; text-align: left; }
+    th, td { padding: 11px 15px; border-top: 1px solid #edf0f6; }
+    th { background: #f7f9fd; color: var(--muted); font-size: .75rem; font-weight: 750; }
+    td { font-size: .86rem; }
+    .numeric { text-align: right; font-variant-numeric: tabular-nums; }
+    .empty { color: var(--muted); text-align: center; padding: 24px 12px; }
+    .badge { display: inline-flex; align-items: center; padding: 3px 8px; border-radius: 999px; background: #eef2f8; color: #415470; font-size: .74rem; font-weight: 700; }
+    .badge-created { background: #edf2ff; color: #234c9e; }
+    .badge-paid { background: #e7f6ed; color: #17623e; }
+    .badge-cancelled, .badge-payment_failed { background: #faeeee; color: #9a3038; }
+    .table-footer { padding: 11px 15px; border-top: 1px solid #edf0f6; }
+    .table-footer a, .card-head a { font-size: .85rem; font-weight: 650; }
+    .table-footer a:hover, .card-head a:hover { text-decoration: underline; }
+    .channel-list { list-style: none; padding: 0 16px; margin: 0; }
+    .channel-list li + li { border-top: 1px solid #edf0f6; }
+    .channel-list a { display: flex; align-items: center; gap: 10px; padding: 9px 2px; color: #223451; font-size: .87rem; font-weight: 650; }
+    .channel-list a:hover { color: var(--accent); }
+    .channel-icon { display: grid; place-items: center; width: 29px; height: 29px; border-radius: 7px; background: #ecf1fa; color: #3d5b8d; font-size: .73rem; font-weight: 750; }
+    .channel-arrow { margin-left: auto; color: var(--muted); }
+    .channel-footer { padding: 12px 16px 16px; }
+    .channel-footer button { width: 100%; }
+    .notice { border: 1px solid #cfdef5; background: #edf4ff; color: #29436a; border-radius: 9px; margin-bottom: 18px; padding: 10px 14px; font-size: .85rem; white-space: pre-wrap; }
+    .notice.error { border-color: #efc8cd; background: #fff1f2; color: #912c36; }
+    .edit-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+    .edit-grid form { padding: 0 19px 19px; }
+    .edit-grid button { justify-self: start; }
+    @media (max-width: 1120px) {
+      .channel-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 15px; }
+      .channel-list li + li { border-top: 0; }
+      .channel-footer button { width: auto; }
+    }
+    @media (max-width: 800px) {
+      .shell { grid-template-columns: minmax(0, 1fr); }
+      .sidebar { position: static; min-height: 0; padding: 12px 15px; }
+      .sidebar .brand { margin-bottom: 10px; }
+      .sidebar nav { display: flex; overflow: auto; gap: 4px; }
+      .sidebar nav a { padding: 8px; font-size: .82rem; gap: 6px; }
+      .nav-label, .rail-footer { display: none; }
+      main { padding-top: 23px; }
+    }
+    @media (max-width: 560px) {
+      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .edit-grid, .channel-list { grid-template-columns: minmax(0, 1fr); }
+      .sidebar nav { flex-wrap: wrap; }
+      .sidebar nav .icon { display: none; }
+      .metric { padding: 11px; }
+      .topbar { min-height: 52px; }
+      .user-area span { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="display:none">
+    <symbol id="icon-box" viewBox="0 0 24 24"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z M4 7.5l8 4.5 8-4.5 M12 12v9"/></symbol>
+    <symbol id="icon-home" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
+    <symbol id="icon-order" viewBox="0 0 24 24"><path d="M8 5H5v16h14V5h-3 M8 3h8v5H8z M8 12h8 M8 16h8"/></symbol>
+    <symbol id="icon-channels" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="6" rx="1"/><rect x="3" y="15" width="6" height="6" rx="1"/><rect x="15" y="15" width="6" height="6" rx="1"/><path d="M12 9v3 M6 15v-3h12v3"/></symbol>
+    <symbol id="icon-stock" viewBox="0 0 24 24"><path d="M4 8h16v12H4z M3 4h18v4H3z M9 12h6"/></symbol>
+    <symbol id="icon-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  </svg>
+
+  <div class="login-screen" id="login">
+    <section class="card login-card" aria-labelledby="login-title">
+      <div class="brand">
+        <span class="brand-icon"><svg class="icon" aria-hidden="true"><use href="#icon-box"/></svg></span>
+        <span>Satış Operasyon Merkezi</span>
+      </div>
+      <p class="eyebrow">Yönetim paneli</p>
+      <h1 id="login-title">Giriş yap</h1>
+      <p class="muted">Sipariş ve stok yönetimine erişmek için giriş yap.</p>
+      <form id="loginForm" class="form-stack">
+        <label>Kullanıcı adı<input id="username" autocomplete="username" required></label>
+        <label>Parola<input id="password" type="password" autocomplete="current-password" required></label>
+        <button class="primary" type="submit">Giriş yap</button>
+      </form>
+      <p class="error login-error" id="loginError" role="alert"></p>
+      <p class="activation-success" id="activationSuccess" role="status"></p>
+    </section>
+  </div>
+
+  <div class="login-screen" id="activation" hidden>
+    <section class="card login-card" aria-labelledby="activation-title">
+      <p class="eyebrow">Hesap kurulumu</p>
+      <h1 id="activation-title">Parolanı belirle</h1>
+      <p class="muted">Hesabını etkinleştirmek için en az 12 karakterli bir parola seç.</p>
+      <form id="activationForm" class="form-stack">
+        <label>Yeni parola<input id="activationPassword" type="password" autocomplete="new-password" minlength="12" required></label>
+        <label>Parolayı doğrula<input id="confirmActivationPassword" type="password" autocomplete="new-password" minlength="12" required></label>
+        <button class="primary" type="submit">Hesabı etkinleştir</button>
+      </form>
+      <p class="error login-error" id="activationError" role="alert"></p>
+    </section>
+  </div>
+
+  <div class="shell" id="workspace" hidden>
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-icon"><svg class="icon" aria-hidden="true"><use href="#icon-box"/></svg></span>
+        <span>Satış Operasyon<small>Yönetim paneli</small></span>
+      </div>
+      <p class="nav-label">Operasyon</p>
+      <nav aria-label="Panel bölümleri">
+        <a href="#overview"><svg class="icon" aria-hidden="true"><use href="#icon-home"/></svg>Genel Bakış</a>
+        <a href="#orders"><svg class="icon" aria-hidden="true"><use href="#icon-order"/></svg>Siparişler</a>
+        <a href="#products"><svg class="icon" aria-hidden="true"><use href="#icon-box"/></svg>Ürünler</a>
+        <a href="#inventory"><svg class="icon" aria-hidden="true"><use href="#icon-stock"/></svg>Stok</a>
+        <a href="#channels" data-admin-only hidden><svg class="icon" aria-hidden="true"><use href="#icon-channels"/></svg>Satış Kanalları</a>
+        <a href="#accounts" data-admin-only hidden><svg class="icon" aria-hidden="true"><use href="#icon-box"/></svg>Kullanıcılar</a>
+      </nav>
+      <p class="rail-footer">Yerel demo ortamı</p>
+    </aside>
+
+    <div>
+      <header class="topbar">
+        <p>Satış Operasyon Merkezi</p>
+        <div class="user-area"><span id="signedInUser"></span><button id="logout" class="secondary" type="button">Çıkış</button></div>
+      </header>
+      <main>
+        <div id="notice" class="notice" role="status" hidden></div>
+        <section id="overview" data-view aria-labelledby="overview-title">
+        <div class="hero">
+          <div>
+            <p class="eyebrow">Operasyon paneli</p>
+            <h1 id="overview-title">Genel Bakış</h1>
+            <p class="muted">Bugünkü siparişleri ve kanal eşitlemesinde dikkat gerektiren durumları gör.</p>
+          </div>
+          <div class="actions">
+            <button class="secondary" data-refresh type="button">Yenile</button>
+            <button class="primary" data-channel-action="import" type="button" data-admin-only hidden>Siparişleri al</button>
+          </div>
+        </div>
+
+        <section class="metrics" aria-label="Operasyon özeti">
+          <button class="card metric" type="button" data-detail="today" aria-pressed="false" aria-controls="overview-detail"><span class="metric-title"><span class="metric-icon"><svg class="icon" aria-hidden="true"><use href="#icon-order"/></svg></span>Bugünkü siparişler</span><strong class="metric-value" id="todayOrderCount">—</strong><span class="metric-hint">Bugün merkeze kaydedilenler</span></button>
+          <button class="card metric" type="button" data-detail="stock" aria-pressed="false" aria-controls="overview-detail"><span class="metric-title"><span class="metric-icon"><svg class="icon" aria-hidden="true"><use href="#icon-stock"/></svg></span>Stoğu tükenen ürünler</span><strong class="metric-value" id="outOfStockCount">—</strong><span class="metric-hint">Satılabilir stoğu sıfır olanlar</span></button>
+          <button class="card metric" type="button" data-detail="movements" aria-pressed="false" aria-controls="overview-detail" data-admin-only hidden><span class="metric-title"><span class="metric-icon"><svg class="icon" aria-hidden="true"><use href="#icon-clock"/></svg></span>Son stok gönderimi</span><strong class="metric-value" id="syncTime">—</strong><span class="metric-hint" id="syncHint">Bu oturumda henüz gönderilmedi</span></button>
+        </section>
+
+        <section class="card" id="overview-detail" aria-labelledby="detail-title">
+          <header class="card-head"><div aria-live="polite"><h2 id="detail-title">Son siparişler</h2><p class="muted" id="detail-description">Tüm satış kanallarından gelen siparişler</p></div></header>
+          <div id="detail-orders" class="table-wrap" role="region" aria-label="Sipariş tablosu" tabindex="0">
+            <table>
+              <thead><tr><th scope="col">Sipariş</th><th scope="col">Kanal</th><th scope="col">Durum</th><th scope="col" class="numeric">Toplam</th><th scope="col">Tarih</th><th scope="col">Kanal sipariş no.</th></tr></thead>
+              <tbody id="recentOrderRows"></tbody>
+            </table>
+          </div>
+          <div id="detail-stock" class="table-wrap" role="region" aria-label="Stok durumu tablosu" tabindex="0" hidden>
+            <table>
+              <thead><tr><th scope="col">Ürün</th><th scope="col">SKU</th><th scope="col" class="numeric">Fiziksel</th><th scope="col" class="numeric">Ayrılmış</th><th scope="col" class="numeric">Satılabilir</th></tr></thead>
+              <tbody id="detailStockRows"></tbody>
+            </table>
+          </div>
+          <div id="detail-movements" class="table-wrap" role="region" aria-label="Stok hareketleri tablosu" tabindex="0" hidden>
+            <table>
+              <thead><tr><th scope="col">Tarih</th><th scope="col">Ürün</th><th scope="col">SKU</th><th scope="col">Hareket</th><th scope="col" class="numeric">Değişim</th></tr></thead>
+              <tbody id="movementRows"></tbody>
+            </table>
+          </div>
+          <footer class="table-footer" id="detail-footer"><a href="#orders" id="detail-link">Tüm siparişlere git →</a></footer>
+        </section>
+        </section>
+
+        <section id="orders" data-view hidden aria-labelledby="all-orders-title">
+          <div class="hero">
+            <div><p class="eyebrow">Operasyon paneli</p><h1 id="all-orders-title">Siparişler</h1><p class="muted" id="all-orders-description">Tüm satış kanallarından merkeze kaydedilen siparişler.</p></div>
+            <div class="actions"><button class="secondary" data-refresh type="button">Yenile</button><button class="primary" data-channel-action="import" type="button" data-admin-only hidden>Siparişleri al</button></div>
+          </div>
+          <section class="card" aria-label="Tüm siparişler">
+            <div class="table-wrap" role="region" aria-label="Tüm siparişler tablosu" tabindex="0">
+              <table>
+                <thead><tr><th scope="col">Sipariş</th><th scope="col">Kanal</th><th scope="col">Durum</th><th scope="col" class="numeric">Toplam</th><th scope="col">Tarih</th><th scope="col">Kanal sipariş no.</th></tr></thead>
+                <tbody id="orderRows"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <section id="channels" data-view data-admin-view hidden aria-labelledby="channels-title">
+          <div class="hero"><div><p class="eyebrow">Operasyon paneli</p><h1 id="channels-title">Satış Kanalları</h1><p class="muted">Kanal simülatörlerini aç ve stok bilgilerini gönder.</p></div></div>
+          <section class="card" aria-label="Kanal simülatörleri">
+            <header class="card-head"><div><h2>Kanal simülatörleri</h2><p class="muted">Beş yerel simülatör · yeni sekmede açılır</p></div></header>
+            <ul class="channel-list">
+              <li><a href="http://127.0.0.1:8081" target="_blank" rel="noopener"><span class="channel-icon" aria-hidden="true">T</span>Trendyol <span class="channel-arrow" aria-hidden="true">↗</span></a></li>
+              <li><a href="http://127.0.0.1:8082" target="_blank" rel="noopener"><span class="channel-icon" aria-hidden="true">H</span>Hepsiburada <span class="channel-arrow" aria-hidden="true">↗</span></a></li>
+              <li><a href="http://127.0.0.1:8083" target="_blank" rel="noopener"><span class="channel-icon" aria-hidden="true">n11</span>n11 <span class="channel-arrow" aria-hidden="true">↗</span></a></li>
+              <li><a href="http://127.0.0.1:8084" target="_blank" rel="noopener"><span class="channel-icon" aria-hidden="true">W</span>Web mağazası <span class="channel-arrow" aria-hidden="true">↗</span></a></li>
+              <li><a href="http://127.0.0.1:8085" target="_blank" rel="noopener"><span class="channel-icon" aria-hidden="true">Ş</span>Şube satışları <span class="channel-arrow" aria-hidden="true">↗</span></a></li>
+            </ul>
+            <div class="channel-footer"><button class="primary" data-channel-action="sync-stock" type="button">Stokları kanallara gönder</button></div>
+          </section>
+        </section>
+
+        <section id="inventory" data-view hidden aria-labelledby="stock-page-title">
+          <div class="hero"><div><p class="eyebrow">Operasyon paneli</p><h1 id="stock-page-title">Stok</h1><p class="muted">Ürün ekle, stok miktarlarını görüntüle ve düzenle.</p></div><button class="secondary" data-refresh type="button">Yenile</button></div>
+          <section class="card" aria-labelledby="inventory-title">
+          <header class="card-head"><div><h2 id="inventory-title">Stok görünümü</h2><p class="muted">Ürün bazında fiziksel, ayrılmış ve satılabilir stok</p></div></header>
+          <div class="table-wrap" role="region" aria-label="Stok tablosu" tabindex="0">
+            <table>
+              <thead><tr><th scope="col">ID</th><th scope="col">SKU</th><th scope="col">Ürün</th><th scope="col" class="numeric">Fiziksel</th><th scope="col" class="numeric">Ayrılmış</th><th scope="col" class="numeric">Satılabilir</th></tr></thead>
+              <tbody id="stockRows"></tbody>
+            </table>
+          </div>
+          </section>
+          <div class="edit-grid section" data-admin-only hidden>
+            <section class="card" aria-labelledby="product-title">
+              <header class="card-head"><h2 id="product-title">Ürün ekle</h2></header>
+              <form id="productForm" class="form-stack">
+                <label>Ürün adı<input id="productName" required></label>
+                <label>SKU<input id="productSku" maxlength="64" required></label>
+                <label>Fiyat<input id="productPrice" type="number" min="0.01" step="0.01" required></label>
+                <button type="submit" class="primary">Ürünü kaydet</button>
+              </form>
+            </section>
+            <section class="card" aria-labelledby="stock-title">
+              <header class="card-head"><h2 id="stock-title">Stok düzenle</h2></header>
+              <form id="stockForm" class="form-stack">
+                <label>Ürün ID<input id="productId" type="number" min="1" required></label>
+                <label>Fiziksel stok<input id="stockQuantity" type="number" min="0" required></label>
+                <button type="submit" class="primary">Stoku kaydet</button>
+              </form>
+            </section>
+          </div>
+        </section>
+
+        <section id="products" data-view hidden aria-labelledby="products-title">
+          <div class="hero"><div><p class="eyebrow">Operasyon paneli</p><h1 id="products-title">Ürünler</h1><p class="muted">Ürün kataloğunu görüntüle.</p></div><button class="secondary" data-refresh type="button">Yenile</button></div>
+          <section class="card" aria-labelledby="catalog-title">
+            <header class="card-head"><h2 id="catalog-title">Ürün kataloğu</h2></header>
+            <div class="table-wrap" role="region" aria-label="Ürün tablosu" tabindex="0">
+              <table>
+                <thead><tr><th scope="col">ID</th><th scope="col">SKU</th><th scope="col">Ürün</th><th scope="col" class="numeric">Fiyat</th></tr></thead>
+                <tbody id="productRows"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+        <section id="accounts" data-view data-admin-view hidden aria-labelledby="accounts-title">
+          <div class="hero"><div><p class="eyebrow">Yönetim paneli</p><h1 id="accounts-title">Kullanıcılar</h1><p class="muted">Çalışanlar için hesap oluştur ve parola belirleme bağlantısı ver.</p></div></div>
+          <section class="card account-form" aria-labelledby="invite-title">
+            <header class="card-head"><div><h2 id="invite-title">Çalışan hesabı</h2><p class="muted">Bekleyen bir hesap için aynı kullanıcı adıyla yeni bağlantı oluşturabilirsin.</p></div></header>
+            <form id="inviteForm" class="form-stack">
+              <label>Kullanıcı adı<input id="inviteUsername" autocomplete="off" minlength="3" maxlength="64" pattern="[A-Za-z0-9._\-]{3,64}" required></label>
+              <button class="primary" type="submit">Parola bağlantısı oluştur</button>
+              <label id="invitationResult" hidden>Tek kullanımlık bağlantı · 24 saat geçerli
+                <input id="invitationLink" type="url" readonly>
+                <span class="muted">Bu bağlantıyı yalnızca ilgili çalışanla paylaş.</span>
+              </label>
+            </form>
+          </section>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    const channels = { INTERNAL: 'Merkez', TRENDYOL: 'Trendyol', HEPSIBURADA: 'Hepsiburada', N11: 'n11', WEBSTORE: 'Web mağazası', BRANCH: 'Şube' };
+    const statuses = { CREATED: 'Oluşturuldu', PAID: 'Ödendi', CANCELLED: 'İptal edildi', PAYMENT_FAILED: 'Ödeme başarısız' };
+    const movementTypes = {
+      INITIAL: 'İlk stok', STOCK_IN: 'Stok girişi', STOCK_OUT: 'Stok çıkışı',
+      ADJUSTMENT: 'Stok düzeltmesi', RESERVATION: 'Stok ayırma',
+      RELEASE: 'Ayrılan stoğu serbest bırakma', CONSUME: 'Ayrılan stoğu düşme'
+    };
+    const recentOrderLimit = 6;
+    const numbers = new Intl.NumberFormat('tr-TR');
+    const signedNumbers = new Intl.NumberFormat('tr-TR', { signDisplay: 'exceptZero' });
+    const amounts = new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const timeZone = 'Europe/Istanbul';
+    const dates = new Intl.DateTimeFormat('tr-TR', { timeZone, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    const calendarDays = new Intl.DateTimeFormat('tr-TR', { timeZone, year: 'numeric', month: 'numeric', day: 'numeric' });
+    const clock = new Intl.DateTimeFormat('tr-TR', { timeZone, hour: '2-digit', minute: '2-digit' });
+    const views = [...document.querySelectorAll('[data-view]')];
+    const navigation = [...document.querySelectorAll('.sidebar nav a')];
+    const detailButtons = [...document.querySelectorAll('[data-detail]')];
+    let token = '';
+    let isAdmin = false;
+    let activationToken = '';
+    let selectedDetail = 'recent';
+    let overviewData = { recentOrders: [], todayOrders: [], stockRows: [] };
+    let detailRequest = 0;
+
+    function showView() {
+      const view = views.find(item => '#' + item.id === location.hash
+        && (isAdmin || !item.hasAttribute('data-admin-view'))) || views[0];
+      for (const item of views) item.hidden = item !== view;
+      for (const link of navigation) {
+        const active = link.hash === '#' + view.id;
+        link.classList.toggle('active', active);
+        if (active) link.setAttribute('aria-current', 'page');
+        else link.removeAttribute('aria-current');
+      }
+      document.title = view.querySelector('h1').textContent + ' | Satış Operasyon Merkezi';
+      window.scrollTo(0, 0);
+    }
+
+    function readActivationLink() {
+      if (!$('workspace').hidden) return;
+      const prefix = '#activate=';
+      if (!location.hash.startsWith(prefix)) return;
+      activationToken = location.hash.slice(prefix.length);
+      history.replaceState(null, '', location.pathname + location.search);
+      $('login').hidden = true;
+      $('activation').hidden = false;
+    }
+
+    function renderSyncSummary(results) {
+      const failures = results?.filter(result => !result.success).length ?? 0;
+      $('syncTime').textContent = results ? clock.format(new Date()) : '—';
+      $('syncHint').textContent = !results ? 'Bu oturumda henüz gönderilmedi'
+        : failures ? failures + ' kanalda hata' : 'Tüm kanallara gönderildi';
+    }
+
+    function notify(message, isError = false) {
+      const notice = $('notice');
+      notice.textContent = message;
+      notice.hidden = !message;
+      notice.classList.toggle('error', isError);
+    }
+
+    function cell(row, value, className) {
+      const td = document.createElement('td');
+      if (value instanceof Node) td.append(value);
+      else td.textContent = value ?? '—';
+      if (className) td.className = className;
+      row.append(td);
+      return td;
+    }
+
+    function emptyRow(body, message, columns = 6) {
+      const row = document.createElement('tr');
+      cell(row, message, 'empty').colSpan = columns;
+      body.append(row);
+    }
+
+    async function api(path, method = 'GET', body) {
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers.Authorization = 'Bearer ' + token;
+      const response = await fetch('/api/v1' + path, {
+        method,
+        headers,
+        body: body === undefined ? undefined : JSON.stringify(body)
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        const error = new Error(data?.detail || 'İstek reddedildi (' + response.status + ').');
+        error.status = response.status;
+        throw error;
+      }
+      return data;
+    }
+
+    async function readStock(productId) {
+      try {
+        return await api('/products/' + productId + '/stock');
+      } catch (error) {
+        if (error.status === 404) return null;
+        throw error;
+      }
+    }
+
+    function renderOrders(body, orders, emptyMessage = 'Henüz sipariş yok.') {
+      body.replaceChildren();
+      if (!orders.length) emptyRow(body, emptyMessage);
+      for (const order of orders) {
+        const row = document.createElement('tr');
+        const badge = document.createElement('span');
+        badge.className = 'badge';
+        if (statuses[order.status]) badge.classList.add('badge-' + order.status.toLowerCase());
+        badge.textContent = statuses[order.status] || order.status || '—';
+        cell(row, '#' + order.id);
+        cell(row, channels[order.source] || order.source);
+        cell(row, badge);
+        cell(row, order.totalAmount == null ? '—' : amounts.format(order.totalAmount), 'numeric');
+        const date = new Date(order.createdAt);
+        cell(row, order.createdAt && !Number.isNaN(date.getTime()) ? dates.format(date) : '—');
+        cell(row, order.externalOrderId);
+        body.append(row);
+      }
+    }
+
+    function renderOverviewStock(body) {
+      body.replaceChildren();
+      const configured = overviewData.stockRows.filter(({ stock }) => stock);
+      const soldOut = configured.filter(({ stock }) => stock.availableQuantity === 0);
+      const rows = (soldOut.length ? soldOut : configured).sort((left, right) =>
+        left.stock.availableQuantity - right.stock.availableQuantity
+        || left.product.sku.localeCompare(right.product.sku, 'tr'));
+      $('detail-title').textContent = soldOut.length ? 'Stoğu tükenen ürünler' : 'Satılabilir stok sıralaması';
+      $('detail-description').textContent = soldOut.length
+        ? 'Satılabilir stoğu sıfır olan ürünler.'
+        : 'Stoğu tükenen ürün yok. Ürünler satılabilir stoğa göre azdan çoğa sıralandı.';
+      if (!rows.length) {
+        $('detail-description').textContent = 'Stok miktarı tanımlandığında ürünler burada listelenir.';
+        emptyRow(body, 'Henüz stok tanımlanmadı.', 5);
+      }
+      for (const { product, stock } of rows) {
+        const row = document.createElement('tr');
+        cell(row, product.name);
+        cell(row, product.sku);
+        cell(row, numbers.format(stock.quantity), 'numeric');
+        cell(row, numbers.format(stock.reservedQuantity), 'numeric');
+        cell(row, numbers.format(stock.availableQuantity), 'numeric');
+        body.append(row);
+      }
+    }
+
+    async function renderMovements(request) {
+      const body = $('movementRows');
+      body.replaceChildren();
+      emptyRow(body, 'Stok hareketleri yükleniyor…', 5);
+      try {
+        const histories = await Promise.all(overviewData.stockRows.map(async ({ product }) => {
+          const movements = await api('/products/' + product.id + '/inventory-transactions');
+          return movements.map(movement => ({ product, movement }));
+        }));
+        if (request !== detailRequest) return;
+        const rows = histories.flat().sort((left, right) =>
+          Date.parse(right.movement.createdAt) - Date.parse(left.movement.createdAt)
+          || right.movement.id - left.movement.id);
+        body.replaceChildren();
+        if (!rows.length) emptyRow(body, 'Henüz stok hareketi yok.', 5);
+        for (const { product, movement } of rows) {
+          const row = document.createElement('tr');
+          cell(row, dates.format(new Date(movement.createdAt)));
+          cell(row, product.name);
+          cell(row, product.sku);
+          cell(row, movementTypes[movement.type] || movement.type);
+          const change = movement.quantityChange;
+          const color = change > 0 ? ' change-positive' : change < 0 ? ' change-negative' : '';
+          cell(row, signedNumbers.format(change), 'numeric' + color);
+          body.append(row);
+        }
+      } catch (error) {
+        if (request !== detailRequest) return;
+        body.replaceChildren();
+        emptyRow(body, 'Stok hareketleri alınamadı. ' + error.message, 5);
+      }
+    }
+
+    function renderOverviewDetail() {
+      const request = ++detailRequest;
+      const isStock = selectedDetail === 'stock';
+      const isMovements = selectedDetail === 'movements';
+      for (const button of detailButtons) {
+        button.setAttribute('aria-pressed', String(button.dataset.detail === selectedDetail));
+      }
+      $('detail-orders').hidden = isStock || isMovements;
+      $('detail-stock').hidden = !isStock;
+      $('detail-movements').hidden = !isMovements;
+      $('detail-footer').hidden = isMovements;
+      $('detail-link').href = isStock ? '#inventory' : '#orders';
+      $('detail-link').textContent = isStock ? 'Stok sayfasına git →' : 'Tüm siparişlere git →';
+      if (isMovements) {
+        $('detail-title').textContent = 'Stok hareketleri';
+        $('detail-description').textContent = 'Merkezde kaydedilen girişler, çıkışlar ve rezervasyonlar.';
+        renderMovements(request);
+      } else if (isStock) {
+        renderOverviewStock($('detailStockRows'));
+      } else {
+        const isToday = selectedDetail === 'today';
+        $('detail-title').textContent = isToday ? 'Bugünkü siparişler' : 'Son siparişler';
+        $('detail-description').textContent = isToday ? 'Bugün merkeze kaydedilen siparişler.' : 'Tüm satış kanallarından gelen siparişler.';
+        renderOrders($('recentOrderRows'), isToday ? overviewData.todayOrders : overviewData.recentOrders,
+          isToday ? 'Bugün kaydedilen sipariş yok.' : undefined);
+      }
+    }
+
+    function renderProducts(products) {
+      const body = $('productRows');
+      body.replaceChildren();
+      if (!products.length) emptyRow(body, 'Henüz ürün yok.', 4);
+      for (const product of products) {
+        const row = document.createElement('tr');
+        cell(row, product.id);
+        cell(row, product.sku);
+        cell(row, product.name);
+        cell(row, product.price == null ? '—' : amounts.format(product.price), 'numeric');
+        body.append(row);
+      }
+    }
+
+    async function refresh() {
+      const ordersPath = isAdmin ? '/operations/orders' : '/orders';
+      const [products, loadedOrders] = await Promise.all([api('/products'), api(ordersPath)]);
+      const stockRows = [];
+      for (const product of products) {
+        stockRows.push({ product, stock: await readStock(product.id) });
+      }
+      const body = $('stockRows');
+      body.replaceChildren();
+      if (!stockRows.length) emptyRow(body, 'Henüz ürün yok.');
+      let outOfStock = 0;
+      for (const { product, stock } of stockRows) {
+        const row = document.createElement('tr');
+        cell(row, product.id);
+        cell(row, product.sku);
+        cell(row, product.name);
+        cell(row, stock ? numbers.format(stock.quantity) : 'Tanımlanmamış', 'numeric');
+        cell(row, stock ? numbers.format(stock.reservedQuantity) : null, 'numeric');
+        cell(row, stock ? numbers.format(stock.availableQuantity) : null, 'numeric');
+        body.append(row);
+        if (stock?.availableQuantity === 0) outOfStock++;
+      }
+      const today = calendarDays.format(new Date());
+      const todayOrders = loadedOrders.filter(order => {
+        const date = new Date(order.createdAt);
+        return order.createdAt && !Number.isNaN(date.getTime()) && calendarDays.format(date) === today;
+      });
+      $('todayOrderCount').textContent = numbers.format(todayOrders.length);
+      $('outOfStockCount').textContent = numbers.format(outOfStock);
+      overviewData = { recentOrders: loadedOrders.slice(0, recentOrderLimit), todayOrders, stockRows };
+      renderOverviewDetail();
+      renderOrders($('orderRows'), loadedOrders);
+      renderProducts(products);
+    }
+
+    async function action(button, work, onError = error => notify(error.message, true)) {
+      button.disabled = true;
+      try { await work(); }
+      catch (error) { onError(error); }
+      finally { button.disabled = false; }
+    }
+
+    $('loginForm').addEventListener('submit', event => {
+      event.preventDefault();
+      $('loginError').textContent = '';
+      action(event.submitter, async () => {
+        const username = $('username').value;
+        const login = await api('/auth/login', 'POST', { username, password: $('password').value });
+        token = login.accessToken;
+        isAdmin = login.role === 'ADMIN';
+        try { await refresh(); }
+        catch (error) { token = ''; isAdmin = false; throw error; }
+        document.querySelectorAll('[data-admin-only]').forEach(element => { element.hidden = !isAdmin; });
+        $('all-orders-description').textContent = isAdmin
+          ? 'Tüm satış kanallarından merkeze kaydedilen siparişler.' : 'Hesabına ait siparişler.';
+        $('password').value = '';
+        $('signedInUser').textContent = username;
+        $('login').hidden = true;
+        $('workspace').hidden = false;
+        showView();
+      }, error => { $('loginError').textContent = error.message; });
+    });
+
+    $('logout').addEventListener('click', () => {
+      token = '';
+      isAdmin = false;
+      $('invitationLink').value = '';
+      $('invitationResult').hidden = true;
+      $('inviteForm').reset();
+      selectedDetail = 'recent';
+      detailRequest++;
+      renderSyncSummary(null);
+      notify('');
+      $('workspace').hidden = true;
+      $('login').hidden = false;
+      $('password').focus();
+    });
+    for (const button of detailButtons) {
+      button.addEventListener('click', () => {
+        selectedDetail = button.dataset.detail;
+        renderOverviewDetail();
+      });
+    }
+    document.querySelectorAll('[data-refresh]').forEach(button => {
+      button.addEventListener('click', () => action(button, async () => {
+        await refresh();
+        notify('Panel güncellendi.');
+      }));
+    });
+    window.addEventListener('hashchange', () => {
+      if ($('workspace').hidden) { readActivationLink(); return; }
+      notify('');
+      showView();
+    });
+
+    $('inviteForm').addEventListener('submit', event => {
+      event.preventDefault();
+      $('invitationResult').hidden = true;
+      $('invitationLink').value = '';
+      action(event.submitter, async () => {
+        const invitation = await api('/auth/accounts', 'POST', { username: $('inviteUsername').value });
+        if (!isAdmin) return;
+        const link = new URL(location.pathname, location.origin);
+        link.hash = 'activate=' + invitation.token;
+        $('invitationLink').value = link.href;
+        $('invitationResult').hidden = false;
+        $('invitationLink').select();
+        notify('Parola belirleme bağlantısı hazır.');
+      });
+    });
+    $('activationForm').addEventListener('submit', event => {
+      event.preventDefault();
+      const password = $('activationPassword').value;
+      const error = $('activationError');
+      error.textContent = '';
+      if (password !== $('confirmActivationPassword').value) {
+        error.textContent = 'Parolalar aynı olmalı.';
+        return;
+      }
+      action(event.submitter, async () => {
+        await api('/auth/activate', 'POST', { token: activationToken, password });
+        activationToken = '';
+        $('activationForm').reset();
+        $('activation').hidden = true;
+        $('login').hidden = false;
+        $('activationSuccess').textContent = 'Hesabın etkin. Kullanıcı adın ve yeni parolanla giriş yapabilirsin.';
+        $('username').focus();
+      }, failure => { error.textContent = failure.message; });
+    });
+    readActivationLink();
+
+    for (const button of document.querySelectorAll('[data-channel-action]')) {
+      const path = button.dataset.channelAction;
+      button.addEventListener('click', () => action(button, async () => {
+        const results = await api('/operations/channels/' + path, 'POST');
+        if (path === 'sync-stock') renderSyncSummary(results);
+        const message = results.map(result => {
+          const status = result.success ? 'Tamam' : 'Dikkat';
+          const detail = result.success
+            ? (path === 'import' ? result.imported + ' sipariş alındı' : 'Stok gönderildi')
+            : result.message;
+          return (channels[result.source] || result.source) + ' · ' + status + ' · ' + detail;
+        }).join('\n');
+        notify(message, results.some(result => !result.success));
+        await refresh();
+      }));
+    }
+
+    $('productForm').addEventListener('submit', event => {
+      event.preventDefault();
+      action(event.submitter, async () => {
+        const product = await api('/products', 'POST', {
+          name: $('productName').value,
+          sku: $('productSku').value,
+          price: Number($('productPrice').value)
+        });
+        $('productId').value = product.id;
+        $('productForm').reset();
+        notify('Ürün eklendi (#' + product.id + ').');
+        await refresh();
+      });
+    });
+    $('stockForm').addEventListener('submit', event => {
+      event.preventDefault();
+      action(event.submitter, async () => {
+        const productId = Number($('productId').value);
+        const stock = await readStock(productId);
+        await api('/products/' + productId + '/stock', stock ? 'PATCH' : 'POST', {
+          quantity: Number($('stockQuantity').value)
+        });
+        notify('Stok güncellendi. Kanalları eşitlemek için stokları gönder.');
+        await refresh();
+      });
+    });
+  </script>
+</body>
+</html>

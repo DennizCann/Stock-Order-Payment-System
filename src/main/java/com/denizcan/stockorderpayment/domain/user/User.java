@@ -13,6 +13,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.Instant;
+
 @Entity
 @Table(name = "users")
 @Getter
@@ -36,6 +38,18 @@ public class User {
 
     @Column(nullable = false)
     private boolean enabled = true;
+
+    @Column(name = "activation_token_hash", length = 64, unique = true)
+    private String activationTokenHash;
+
+    @Column(name = "activation_expires_at")
+    private Instant activationExpiresAt;
+
+    public void prepareActivation(String tokenHash, Instant expiresAt) {
+        enabled = false;
+        activationTokenHash = tokenHash;
+        activationExpiresAt = expiresAt;
+    }
 
     public User(String username, String password, Role role) {
         this.username = username;

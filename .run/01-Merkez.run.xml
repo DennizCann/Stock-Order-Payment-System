@@ -1,0 +1,11 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="01 - Merkez" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="com.denizcan.stockorderpayment.StockOrderPaymentApplication" />
+    <module name="Stock-Order-Payment-System" />
+    <option name="PROGRAM_PARAMETERS" value="--spring.profiles.active=dev --server.address=127.0.0.1 --spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/stock_order_payment_local" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
