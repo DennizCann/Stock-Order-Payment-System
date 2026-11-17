@@ -10,6 +10,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -19,6 +20,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final JwtService jwtService;
 
+    @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest request) {
         try {
             authenticationManager.authenticate(
@@ -32,6 +34,7 @@ public class AuthService {
                 .orElseThrow(InvalidCredentialsException::new);
 
         String token = jwtService.generateToken(user.getUsername(), user.getRole().name());
-        return AuthResponse.bearer(token, user.getUsername(), user.getRole().name());
+        String branchName = user.getBranch() == null ? null : user.getBranch().getName();
+        return AuthResponse.bearer(token, user.getUsername(), user.getRole().name(), branchName);
     }
 }

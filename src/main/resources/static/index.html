@@ -55,6 +55,8 @@
     .account-form { max-width: 580px; }
     .account-form .form-stack { padding: 0 19px 19px; }
     .account-form .form-stack button { justify-self: start; }
+    .account-form select { min-height: 40px; padding: 8px 10px; font: inherit; color: inherit; border: 1px solid #c9d5e5; border-radius: 8px; background: #fff; }
+    .sidebar nav .nav-label { margin-top: 14px; }
     .activation-success:not(:empty) { margin-top: 12px; color: #17623e; }
     .shell { display: grid; grid-template-columns: 218px minmax(0, 1fr); min-height: 100dvh; }
     .sidebar { display: flex; flex-direction: column; align-self: start; position: sticky; top: 0; min-height: 100dvh; padding: 25px 16px 18px; background: var(--rail); color: white; }
@@ -193,11 +195,14 @@
       </div>
       <p class="nav-label">Operasyon</p>
       <nav aria-label="Panel bölümleri">
-        <a href="#overview"><svg class="icon" aria-hidden="true"><use href="#icon-home"/></svg>Genel Bakış</a>
-        <a href="#orders"><svg class="icon" aria-hidden="true"><use href="#icon-order"/></svg>Siparişler</a>
-        <a href="#products"><svg class="icon" aria-hidden="true"><use href="#icon-box"/></svg>Ürünler</a>
-        <a href="#inventory"><svg class="icon" aria-hidden="true"><use href="#icon-stock"/></svg>Stok</a>
+        <a href="#overview" data-central-only><svg class="icon" aria-hidden="true"><use href="#icon-home"/></svg>Genel Bakış</a>
+        <a href="#orders" data-central-only><svg class="icon" aria-hidden="true"><use href="#icon-order"/></svg>Siparişler</a>
+        <a href="#products" data-central-only><svg class="icon" aria-hidden="true"><use href="#icon-box"/></svg>Ürünler</a>
+        <a href="#inventory" data-central-only><svg class="icon" aria-hidden="true"><use href="#icon-stock"/></svg>Stok</a>
         <a href="#channels" data-admin-only hidden><svg class="icon" aria-hidden="true"><use href="#icon-channels"/></svg>Satış Kanalları</a>
+        <p class="nav-label" data-admin-only hidden>Yönetim</p>
+        <a href="#branches" data-admin-only hidden><svg class="icon" aria-hidden="true"><use href="#icon-stock"/></svg>Şubeler</a>
+        <a href="#branch-workspace" data-branch-only hidden><svg class="icon" aria-hidden="true"><use href="#icon-home"/></svg>Şubem</a>
         <a href="#accounts" data-admin-only hidden><svg class="icon" aria-hidden="true"><use href="#icon-box"/></svg>Kullanıcılar</a>
       </nav>
       <p class="rail-footer">Yerel demo ortamı</p>
@@ -282,7 +287,7 @@
         <section id="inventory" data-view hidden aria-labelledby="stock-page-title">
           <div class="hero"><div><p class="eyebrow">Operasyon paneli</p><h1 id="stock-page-title">Stok</h1><p class="muted">Ürün ekle, stok miktarlarını görüntüle ve düzenle.</p></div><button class="secondary" data-refresh type="button">Yenile</button></div>
           <section class="card" aria-labelledby="inventory-title">
-          <header class="card-head"><div><h2 id="inventory-title">Stok görünümü</h2><p class="muted">Ürün bazında fiziksel, ayrılmış ve satılabilir stok</p></div></header>
+          <header class="card-head"><div><h2 id="inventory-title">Merkez stoğu</h2><p class="muted">Ürün bazında fiziksel, ayrılmış ve satılabilir stok</p></div></header>
           <div class="table-wrap" role="region" aria-label="Stok tablosu" tabindex="0">
             <table>
               <thead><tr><th scope="col">ID</th><th scope="col">SKU</th><th scope="col">Ürün</th><th scope="col" class="numeric">Fiziksel</th><th scope="col" class="numeric">Ayrılmış</th><th scope="col" class="numeric">Satılabilir</th><th scope="col" data-admin-only hidden>İşlem</th></tr></thead>
@@ -308,6 +313,30 @@
               </form>
             </section>
           </div>
+          <section class="card section account-form" data-admin-only hidden aria-labelledby="branch-stock-title">
+            <header class="card-head"><h2 id="branch-stock-title">Şube stoğu</h2></header>
+            <form id="branchStockForm" class="form-stack">
+              <label>Şube<select id="inventoryBranch" required></select></label>
+              <label>Ürün<select id="inventoryBranchProduct" required></select></label>
+              <label>Yeni stok adedi<input id="inventoryBranchQuantity" type="number" min="0" max="2147483647" required></label>
+              <button class="primary" type="submit">Şube stoğunu kaydet</button>
+            </form>
+            <div class="table-wrap" role="region" aria-label="Seçili şubenin stoğu" tabindex="0">
+              <table>
+                <thead><tr><th scope="col">Ürün</th><th scope="col">SKU</th><th scope="col" class="numeric">Adet</th></tr></thead>
+                <tbody id="branchStockRows"></tbody>
+              </table>
+            </div>
+          </section>
+          <section class="card section" data-admin-only hidden aria-labelledby="branch-movements-title">
+            <header class="card-head"><h2 id="branch-movements-title">Son şube stok hareketleri</h2></header>
+            <div class="table-wrap" role="region" aria-label="Şube stok hareketleri" tabindex="0">
+              <table>
+                <thead><tr><th scope="col">Zaman</th><th scope="col">Şube</th><th scope="col">Ürün</th><th scope="col">Çalışan</th><th scope="col">İşlem</th><th scope="col" class="numeric">Değişim</th><th scope="col" class="numeric">Kalan</th></tr></thead>
+                <tbody id="branchMovementRows"></tbody>
+              </table>
+            </div>
+          </section>
         </section>
 
         <section id="products" data-view hidden aria-labelledby="products-title">
@@ -322,12 +351,61 @@
             </div>
           </section>
         </section>
+        <section id="branches" data-view data-admin-view hidden aria-labelledby="branches-title">
+          <div class="hero"><div><h1 id="branches-title">Şubeler</h1></div></div>
+          <section class="card account-form" aria-labelledby="branch-form-title">
+            <header class="card-head"><h2 id="branch-form-title">Şube ekle</h2></header>
+            <form id="branchForm" class="form-stack">
+              <label>Şube adı<input id="branchName" maxlength="100" required></label>
+              <button class="primary" type="submit">Şubeyi kaydet</button>
+            </form>
+          </section>
+          <section class="card section" aria-labelledby="branch-list-title">
+            <header class="card-head"><h2 id="branch-list-title">Kayıtlı şubeler</h2></header>
+            <div class="table-wrap">
+              <table><thead><tr><th scope="col">Şube adı</th></tr></thead><tbody id="branchRows"></tbody></table>
+            </div>
+          </section>
+        </section>
+        <section id="branch-workspace" data-view data-branch-view hidden aria-labelledby="branch-workspace-title">
+          <div class="hero">
+            <div><h1 id="branch-workspace-title">Şubem</h1><p id="assignedBranch" class="muted"></p></div>
+            <button id="refreshEmployeeStock" class="secondary" type="button">Yenile</button>
+          </div>
+          <section class="card account-form" aria-labelledby="branch-sale-title">
+            <header class="card-head"><h2 id="branch-sale-title">Satış kaydet</h2></header>
+            <form id="branchSaleForm" class="form-stack">
+              <label>Ürün<select id="branchSaleProduct" required></select></label>
+              <label>Adet<input id="branchSaleQuantity" type="number" min="1" max="2147483647" value="1" required></label>
+              <button class="primary" type="submit">Satışı kaydet</button>
+            </form>
+          </section>
+          <section class="card section" aria-labelledby="employee-stock-title">
+            <header class="card-head"><h2 id="employee-stock-title">Şube stoğum</h2></header>
+            <div class="table-wrap" role="region" aria-label="Şube stoğum" tabindex="0">
+              <table>
+                <thead><tr><th scope="col">Ürün</th><th scope="col">SKU</th><th scope="col" class="numeric">Adet</th></tr></thead>
+                <tbody id="employeeStockRows"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
         <section id="accounts" data-view data-admin-view hidden aria-labelledby="accounts-title">
           <div class="hero"><div><p class="eyebrow">Yönetim paneli</p><h1 id="accounts-title">Kullanıcılar</h1><p class="muted">Çalışanlar için hesap oluştur ve parola belirleme bağlantısı ver.</p></div></div>
           <section class="card account-form" aria-labelledby="invite-title">
             <header class="card-head"><div><h2 id="invite-title">Çalışan hesabı</h2><p class="muted">Bekleyen bir hesap için aynı kullanıcı adıyla yeni bağlantı oluşturabilirsin.</p></div></header>
             <form id="inviteForm" class="form-stack">
               <label>Kullanıcı adı<input id="inviteUsername" autocomplete="off" minlength="3" maxlength="64" pattern="[A-Za-z0-9._\-]{3,64}" required></label>
+              <label>Rol
+                <select id="inviteRole">
+                  <option value="USER">Merkez çalışanı</option>
+                  <option value="BRANCH_EMPLOYEE">Şube çalışanı</option>
+                </select>
+              </label>
+              <label id="inviteBranchField" hidden>Şube
+                <select id="inviteBranch" disabled></select>
+              </label>
+              <p id="inviteBranchEmpty" class="muted" hidden>Önce Şubeler bölümünden bir şube ekle.</p>
               <button class="primary" type="submit">Parola bağlantısı oluştur</button>
               <label id="invitationResult" hidden>Tek kullanımlık bağlantı · 24 saat geçerli
                 <input id="invitationLink" type="url" readonly>
@@ -351,6 +429,10 @@
     };
     const recentOrderLimit = 6;
     let selectedStockProductId = null;
+    let branchStock = [];
+    let branchStockRequest = 0;
+    let employeeStockRequest = 0;
+    let pendingBranchSale = null;
     const numbers = new Intl.NumberFormat('tr-TR');
     const signedNumbers = new Intl.NumberFormat('tr-TR', { signDisplay: 'exceptZero' });
     const amounts = new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -363,14 +445,18 @@
     const detailButtons = [...document.querySelectorAll('[data-detail]')];
     let token = '';
     let isAdmin = false;
+    let isBranchEmployee = false;
     let activationToken = '';
     let selectedDetail = 'recent';
     let overviewData = { recentOrders: [], todayOrders: [], stockRows: [] };
     let detailRequest = 0;
 
     function showView() {
-      const view = views.find(item => '#' + item.id === location.hash
-        && (isAdmin || !item.hasAttribute('data-admin-view'))) || views[0];
+      const allowedViews = views.filter(item => {
+        if (isBranchEmployee) return item.hasAttribute('data-branch-view');
+        return !item.hasAttribute('data-branch-view') && (isAdmin || !item.hasAttribute('data-admin-view'));
+      });
+      const view = allowedViews.find(item => '#' + item.id === location.hash) || allowedViews[0];
       for (const item of views) item.hidden = item !== view;
       for (const link of navigation) {
         const active = link.hash === '#' + view.id;
@@ -380,6 +466,12 @@
       }
       document.title = view.querySelector('h1').textContent + ' | Satış Operasyon Merkezi';
       window.scrollTo(0, 0);
+      if (isAdmin && view.id === 'inventory') {
+        const session = token;
+        refreshBranchInventory().catch(error => {
+          if (token === session && !view.hidden) notify(error.message, true);
+        });
+      }
     }
 
     function readActivationLink() {
@@ -568,6 +660,107 @@
       }
     }
 
+    function updateInviteBranch() {
+      const forBranch = $('inviteRole').value === 'BRANCH_EMPLOYEE';
+      $('inviteBranchField').hidden = !forBranch;
+      $('inviteBranch').disabled = !forBranch;
+      $('inviteBranch').required = forBranch;
+      $('inviteBranchEmpty').hidden = !forBranch || $('inviteBranch').options.length > 1;
+    }
+
+    function setOptions(id, label, items, text, value = item => item.id) {
+      const select = $(id);
+      const selected = select.value;
+      select.replaceChildren(new Option(label, ''));
+      for (const item of items) select.add(new Option(text(item), String(value(item))));
+      select.value = items.some(item => String(value(item)) === selected) ? selected : '';
+    }
+
+    async function refreshBranches() {
+      const branches = await api('/branches');
+      if (!isAdmin) return;
+      const table = $('branchRows');
+      table.replaceChildren();
+      if (!branches.length) emptyRow(table, 'Henüz şube yok.', 1);
+      for (const branch of branches) {
+        const row = document.createElement('tr');
+        cell(row, branch.name);
+        table.append(row);
+      }
+      setOptions('inviteBranch', 'Şube seç', branches, branch => branch.name);
+      setOptions('inventoryBranch', 'Şube seç', branches, branch => branch.name);
+      updateInviteBranch();
+    }
+
+    function renderBranchStock(id, lines, emptyMessage) {
+      const body = $(id);
+      body.replaceChildren();
+      if (!lines.length) emptyRow(body, emptyMessage, 3);
+      for (const line of lines) {
+        const row = document.createElement('tr');
+        cell(row, line.productName);
+        cell(row, line.sku);
+        cell(row, numbers.format(line.quantity), 'numeric');
+        body.append(row);
+      }
+    }
+
+    function showBranchQuantity() {
+      const productId = Number($('inventoryBranchProduct').value);
+      $('inventoryBranchQuantity').value = branchStock.find(line => line.productId === productId)?.quantity ?? '';
+    }
+
+    async function refreshAdminBranchStock() {
+      const branchId = $('inventoryBranch').value;
+      const session = token;
+      const request = ++branchStockRequest;
+      const lines = branchId ? await api('/branches/' + branchId + '/stock') : [];
+      if (token !== session || !isAdmin || request !== branchStockRequest) return;
+      branchStock = lines;
+      showBranchQuantity();
+      renderBranchStock('branchStockRows', lines, branchId ? 'Bu şubede henüz stok yok.' : 'Stoğu görmek için şube seç.');
+    }
+
+    async function refreshBranchInventory() {
+      const session = token;
+      const [movements] = await Promise.all([api('/branches/movements'), refreshAdminBranchStock()]);
+      if (token !== session || !isAdmin) return;
+      const body = $('branchMovementRows');
+      body.replaceChildren();
+      if (!movements.length) emptyRow(body, 'Henüz şube stok hareketi yok.', 7);
+      for (const movement of movements) {
+        const row = document.createElement('tr');
+        cell(row, dates.format(new Date(movement.createdAt)));
+        cell(row, movement.branchName);
+        cell(row, movement.productName + ' · ' + movement.sku);
+        cell(row, movement.username);
+        cell(row, movement.type === 'SALE' ? 'Satış' : 'Stok düzenleme');
+        cell(row, signedNumbers.format(movement.change), 'numeric');
+        cell(row, numbers.format(movement.newQuantity), 'numeric');
+        body.append(row);
+      }
+    }
+
+    async function refreshEmployeeStock() {
+      const session = token;
+      const request = ++employeeStockRequest;
+      const lines = await api('/branches/me/stock');
+      if (token !== session || !isBranchEmployee || request !== employeeStockRequest) return;
+      renderBranchStock('employeeStockRows', lines, 'Şubene henüz stok tanımlanmamış.');
+      const available = lines.filter(line => line.quantity > 0);
+      setOptions('branchSaleProduct', available.length ? 'Ürün seç' : 'Satılabilir ürün yok', available,
+        line => line.productName + ' · ' + line.sku, line => line.productId);
+    }
+
+    function newSaleId() {
+      if (crypto.randomUUID) return crypto.randomUUID();
+      const bytes = crypto.getRandomValues(new Uint8Array(16));
+      bytes[6] = (bytes[6] & 15) | 64;
+      bytes[8] = (bytes[8] & 63) | 128;
+      return [...bytes].map(byte => byte.toString(16).padStart(2, '0')).join('')
+        .replace(/^(.{8})(.{4})(.{4})(.{4})(.{12})$/, '$1-$2-$3-$4-$5');
+    }
+
     async function refresh() {
       const ordersPath = isAdmin ? '/operations/orders' : '/orders';
       const [products, loadedOrders] = await Promise.all([api('/products'), api(ordersPath)]);
@@ -616,6 +809,9 @@
       renderOverviewDetail();
       renderOrders($('orderRows'), loadedOrders);
       renderProducts(products);
+      if (isAdmin) {
+        setOptions('inventoryBranchProduct', 'Ürün seç', products, product => product.name + ' · ' + product.sku);
+      }
     }
 
     async function action(button, work, onError = error => notify(error.message, true)) {
@@ -633,9 +829,21 @@
         const login = await api('/auth/login', 'POST', { username, password: $('password').value });
         token = login.accessToken;
         isAdmin = login.role === 'ADMIN';
-        try { await refresh(); }
-        catch (error) { token = ''; isAdmin = false; throw error; }
+        isBranchEmployee = login.role === 'BRANCH_EMPLOYEE';
+        try {
+          if (isAdmin) await Promise.all([refresh(), refreshBranches()]);
+          else if (isBranchEmployee) await refreshEmployeeStock();
+          else await refresh();
+        } catch (error) {
+          token = '';
+          isAdmin = false;
+          isBranchEmployee = false;
+          throw error;
+        }
         document.querySelectorAll('[data-admin-only]').forEach(element => { element.hidden = !isAdmin; });
+        document.querySelectorAll('[data-central-only]').forEach(element => { element.hidden = isBranchEmployee; });
+        document.querySelectorAll('[data-branch-only]').forEach(element => { element.hidden = !isBranchEmployee; });
+        $('assignedBranch').textContent = login.branchName || '';
         $('all-orders-description').textContent = isAdmin
           ? 'Tüm satış kanallarından merkeze kaydedilen siparişler.' : 'Hesabına ait siparişler.';
         $('password').value = '';
@@ -649,11 +857,21 @@
     $('logout').addEventListener('click', () => {
       token = '';
       isAdmin = false;
+      isBranchEmployee = false;
       selectedStockProductId = null;
       $('stockForm').hidden = true;
       $('invitationLink').value = '';
       $('invitationResult').hidden = true;
       $('inviteForm').reset();
+      $('branchForm').reset();
+      $('branchStockForm').reset();
+      $('branchSaleForm').reset();
+      $('branchStockRows').replaceChildren();
+      $('branchMovementRows').replaceChildren();
+      $('employeeStockRows').replaceChildren();
+      branchStock = [];
+      pendingBranchSale = null;
+      updateInviteBranch();
       selectedDetail = 'recent';
       detailRequest++;
       renderSyncSummary(null);
@@ -671,6 +889,7 @@
     document.querySelectorAll('[data-refresh]').forEach(button => {
       button.addEventListener('click', () => action(button, async () => {
         await refresh();
+        if (isAdmin && button.closest('#inventory')) await refreshBranchInventory();
         notify('Panel güncellendi.');
       }));
     });
@@ -680,12 +899,80 @@
       showView();
     });
 
+    $('branchForm').addEventListener('submit', event => {
+      event.preventDefault();
+      action(event.submitter, async () => {
+        const branch = await api('/branches', 'POST', { name: $('branchName').value.trim() });
+        if (!isAdmin) return;
+        $('branchForm').reset();
+        await refreshBranches();
+        if (!isAdmin) return;
+        $('inviteBranch').value = String(branch.id);
+        notify('Şube kaydedildi.');
+      });
+    });
+
+    $('inventoryBranch').addEventListener('change', () => {
+      branchStock = [];
+      $('inventoryBranchQuantity').value = '';
+      $('branchStockRows').replaceChildren();
+      const session = token;
+      refreshAdminBranchStock().catch(error => {
+        if (token === session) notify(error.message, true);
+      });
+    });
+    $('inventoryBranchProduct').addEventListener('change', showBranchQuantity);
+    $('branchStockForm').addEventListener('submit', event => {
+      event.preventDefault();
+      action(event.submitter, async () => {
+        const session = token;
+        const branchId = $('inventoryBranch').value;
+        const productId = $('inventoryBranchProduct').value;
+        const quantity = Number($('inventoryBranchQuantity').value);
+        await api('/branches/' + branchId + '/stock/' + productId, 'PUT', { quantity });
+        if (token !== session || !isAdmin) return;
+        try {
+          await refreshBranchInventory();
+          notify('Şube stoğu kaydedildi.');
+        } catch (error) {
+          notify('Şube stoğu kaydedildi. Listeler güncellenemedi.', true);
+        }
+      });
+    });
+    $('refreshEmployeeStock').addEventListener('click', event => action(event.currentTarget, refreshEmployeeStock));
+    $('branchSaleForm').addEventListener('submit', event => {
+      event.preventDefault();
+      action(event.submitter, async () => {
+        const session = token;
+        const productId = Number($('branchSaleProduct').value);
+        const quantity = Number($('branchSaleQuantity').value);
+        if (pendingBranchSale?.productId !== productId || pendingBranchSale?.quantity !== quantity) {
+          pendingBranchSale = { productId, quantity, saleId: newSaleId() };
+        }
+        await api('/branches/me/sales', 'POST', pendingBranchSale);
+        if (token !== session || !isBranchEmployee) return;
+        pendingBranchSale = null;
+        $('branchSaleForm').reset();
+        $('branchSaleProduct').value = '';
+        try {
+          await refreshEmployeeStock();
+          notify('Satış kaydedildi.');
+        } catch (error) {
+          notify('Satış kaydedildi. Stok listesi güncellenemedi.', true);
+        }
+      });
+    });
+
+    $('inviteRole').addEventListener('change', updateInviteBranch);
     $('inviteForm').addEventListener('submit', event => {
       event.preventDefault();
       $('invitationResult').hidden = true;
       $('invitationLink').value = '';
       action(event.submitter, async () => {
-        const invitation = await api('/auth/accounts', 'POST', { username: $('inviteUsername').value });
+        const role = $('inviteRole').value;
+        const request = { username: $('inviteUsername').value, role };
+        if (role === 'BRANCH_EMPLOYEE') request.branchId = Number($('inviteBranch').value);
+        const invitation = await api('/auth/accounts', 'POST', request);
         if (!isAdmin) return;
         const link = new URL(location.pathname, location.origin);
         link.hash = 'activate=' + invitation.token;

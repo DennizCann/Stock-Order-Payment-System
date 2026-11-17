@@ -1,12 +1,16 @@
 package com.denizcan.stockorderpayment.domain.user;
 
+import com.denizcan.stockorderpayment.domain.branch.Branch;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -36,6 +40,10 @@ public class User {
     @Column(nullable = false, length = 32)
     private Role role;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "branch_id")
+    private Branch branch;
+
     @Column(nullable = false)
     private boolean enabled = true;
 
@@ -45,8 +53,10 @@ public class User {
     @Column(name = "activation_expires_at")
     private Instant activationExpiresAt;
 
-    public void prepareActivation(String tokenHash, Instant expiresAt) {
+    public void prepareActivation(String tokenHash, Instant expiresAt, Role role, Branch branch) {
         enabled = false;
+        this.role = role;
+        this.branch = branch;
         activationTokenHash = tokenHash;
         activationExpiresAt = expiresAt;
     }
