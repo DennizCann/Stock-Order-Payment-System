@@ -65,8 +65,12 @@ class AuthControllerIntegrationTest {
         String username = "new-employee";
         String password = "employee-test-passphrase";
         String adminToken = token("admin", "admin123");
+        mockMvc.perform(post("/api/v1/auth/accounts").header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body(Map.of("username", username, "role", "ADMIN"))))
+                .andExpect(status().isBadRequest());
         var create = post("/api/v1/auth/accounts").contentType(MediaType.APPLICATION_JSON)
-                .content(body(Map.of("username", username, "role", "ADMIN")));
+                .content(body(Map.of("username", username, "role", "USER")));
         mockMvc.perform(post("/api/v1/auth/accounts").contentType(MediaType.APPLICATION_JSON)
                         .content(body(Map.of("username", username))))
                 .andExpect(status().is4xxClientError());
@@ -115,6 +119,57 @@ class AuthControllerIntegrationTest {
         mockMvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
                         .content(body(Map.of("username", username, "password", password))))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.role").value("ADMIN"));
+    }
+
+    @Test
+    void administratorAssignsAnEmployeeToASpecificBranch() throws Exception {
+        String admin = "Bearer " + token("admin", "admin123");
+        String employee = "Bearer " + token("user", "user123");
+        String username = "branch-employee";
+        String password = "branch-test-passphrase";
+        String branchRequest = body(Map.of("name", "Kadıköy şubesi"));
+        mockMvc.perform(post("/api/v1/branches").header("Authorization", employee)
+                        .contentType(MediaType.APPLICATION_JSON).content(branchRequest))
+                .andExpect(status().isForbidden());
+        String created = mockMvc.perform(post("/api/v1/branches").header("Authorization", admin)
+                        .contentType(MediaType.APPLICATION_JSON).content(branchRequest))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        long branchId = objectMapper.readTree(created).get("id").asLong();
+        mockMvc.perform(get("/api/v1/branches").header("Authorization", admin))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].name").value("Kadıköy şubesi"));
+        mockMvc.perform(post("/api/v1/branches").header("Authorization", admin)
+                        .contentType(MediaType.APPLICATION_JSON).content(branchRequest))
+                .andExpect(status().isConflict());
+        mockMvc.perform(post("/api/v1/auth/accounts").header("Authorization", admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body(Map.of("username", username, "role", "BRANCH_EMPLOYEE"))))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(post("/api/v1/auth/accounts").header("Authorization", admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "username", username, "role", "BRANCH_EMPLOYEE", "branchId", Long.MAX_VALUE))))
+                .andExpect(status().isBadRequest());
+
+        String invitation = mockMvc.perform(post("/api/v1/auth/accounts").header("Authorization", admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "username", username, "role", "BRANCH_EMPLOYEE", "branchId", branchId))))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String activationToken = objectMapper.readTree(invitation).get("token").asText();
+        mockMvc.perform(post("/api/v1/auth/activate").contentType(MediaType.APPLICATION_JSON)
+                        .content(body(Map.of("token", activationToken, "password", password))))
+                .andExpect(status().isNoContent());
+        String login = mockMvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content(body(Map.of("username", username, "password", password))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.role").value("BRANCH_EMPLOYEE"))
+                .andExpect(jsonPath("$.branchName").value("Kadıköy şubesi"))
+                .andReturn().getResponse().getContentAsString();
+        String branchEmployee = "Bearer " + objectMapper.readTree(login).get("accessToken").asText();
+        mockMvc.perform(get("/api/v1/branches").header("Authorization", branchEmployee))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/v1/products").header("Authorization", branchEmployee))
+                .andExpect(status().isForbidden());
     }
 
     private String token(String username, String password) throws Exception {

@@ -55,6 +55,8 @@
     .account-form { max-width: 580px; }
     .account-form .form-stack { padding: 0 19px 19px; }
     .account-form .form-stack button { justify-self: start; }
+    .account-form select { min-height: 40px; padding: 8px 10px; font: inherit; color: inherit; border: 1px solid #c9d5e5; border-radius: 8px; background: #fff; }
+    .sidebar nav .nav-label { margin-top: 14px; }
     .activation-success:not(:empty) { margin-top: 12px; color: #17623e; }
     .shell { display: grid; grid-template-columns: 218px minmax(0, 1fr); min-height: 100dvh; }
     .sidebar { display: flex; flex-direction: column; align-self: start; position: sticky; top: 0; min-height: 100dvh; padding: 25px 16px 18px; background: var(--rail); color: white; }
@@ -193,11 +195,14 @@
       </div>
       <p class="nav-label">Operasyon</p>
       <nav aria-label="Panel bölümleri">
-        <a href="#overview"><svg class="icon" aria-hidden="true"><use href="#icon-home"/></svg>Genel Bakış</a>
-        <a href="#orders"><svg class="icon" aria-hidden="true"><use href="#icon-order"/></svg>Siparişler</a>
-        <a href="#products"><svg class="icon" aria-hidden="true"><use href="#icon-box"/></svg>Ürünler</a>
-        <a href="#inventory"><svg class="icon" aria-hidden="true"><use href="#icon-stock"/></svg>Stok</a>
+        <a href="#overview" data-central-only><svg class="icon" aria-hidden="true"><use href="#icon-home"/></svg>Genel Bakış</a>
+        <a href="#orders" data-central-only><svg class="icon" aria-hidden="true"><use href="#icon-order"/></svg>Siparişler</a>
+        <a href="#products" data-central-only><svg class="icon" aria-hidden="true"><use href="#icon-box"/></svg>Ürünler</a>
+        <a href="#inventory" data-central-only><svg class="icon" aria-hidden="true"><use href="#icon-stock"/></svg>Stok</a>
         <a href="#channels" data-admin-only hidden><svg class="icon" aria-hidden="true"><use href="#icon-channels"/></svg>Satış Kanalları</a>
+        <p class="nav-label" data-admin-only hidden>Yönetim</p>
+        <a href="#branches" data-admin-only hidden><svg class="icon" aria-hidden="true"><use href="#icon-stock"/></svg>Şubeler</a>
+        <a href="#branch-workspace" data-branch-only hidden><svg class="icon" aria-hidden="true"><use href="#icon-home"/></svg>Şubem</a>
         <a href="#accounts" data-admin-only hidden><svg class="icon" aria-hidden="true"><use href="#icon-box"/></svg>Kullanıcılar</a>
       </nav>
       <p class="rail-footer">Yerel demo ortamı</p>
@@ -322,12 +327,41 @@
             </div>
           </section>
         </section>
+        <section id="branches" data-view data-admin-view hidden aria-labelledby="branches-title">
+          <div class="hero"><div><h1 id="branches-title">Şubeler</h1></div></div>
+          <section class="card account-form" aria-labelledby="branch-form-title">
+            <header class="card-head"><h2 id="branch-form-title">Şube ekle</h2></header>
+            <form id="branchForm" class="form-stack">
+              <label>Şube adı<input id="branchName" maxlength="100" required></label>
+              <button class="primary" type="submit">Şubeyi kaydet</button>
+            </form>
+          </section>
+          <section class="card section" aria-labelledby="branch-list-title">
+            <header class="card-head"><h2 id="branch-list-title">Kayıtlı şubeler</h2></header>
+            <div class="table-wrap">
+              <table><thead><tr><th scope="col">Şube adı</th></tr></thead><tbody id="branchRows"></tbody></table>
+            </div>
+          </section>
+        </section>
+        <section id="branch-workspace" data-view data-branch-view hidden aria-labelledby="branch-workspace-title">
+          <div class="hero"><div><h1 id="branch-workspace-title">Şubem</h1><p id="assignedBranch" class="muted"></p></div></div>
+        </section>
         <section id="accounts" data-view data-admin-view hidden aria-labelledby="accounts-title">
           <div class="hero"><div><p class="eyebrow">Yönetim paneli</p><h1 id="accounts-title">Kullanıcılar</h1><p class="muted">Çalışanlar için hesap oluştur ve parola belirleme bağlantısı ver.</p></div></div>
           <section class="card account-form" aria-labelledby="invite-title">
             <header class="card-head"><div><h2 id="invite-title">Çalışan hesabı</h2><p class="muted">Bekleyen bir hesap için aynı kullanıcı adıyla yeni bağlantı oluşturabilirsin.</p></div></header>
             <form id="inviteForm" class="form-stack">
               <label>Kullanıcı adı<input id="inviteUsername" autocomplete="off" minlength="3" maxlength="64" pattern="[A-Za-z0-9._\-]{3,64}" required></label>
+              <label>Rol
+                <select id="inviteRole">
+                  <option value="USER">Merkez çalışanı</option>
+                  <option value="BRANCH_EMPLOYEE">Şube çalışanı</option>
+                </select>
+              </label>
+              <label id="inviteBranchField" hidden>Şube
+                <select id="inviteBranch" disabled></select>
+              </label>
+              <p id="inviteBranchEmpty" class="muted" hidden>Önce Şubeler bölümünden bir şube ekle.</p>
               <button class="primary" type="submit">Parola bağlantısı oluştur</button>
               <label id="invitationResult" hidden>Tek kullanımlık bağlantı · 24 saat geçerli
                 <input id="invitationLink" type="url" readonly>
@@ -363,14 +397,18 @@
     const detailButtons = [...document.querySelectorAll('[data-detail]')];
     let token = '';
     let isAdmin = false;
+    let isBranchEmployee = false;
     let activationToken = '';
     let selectedDetail = 'recent';
     let overviewData = { recentOrders: [], todayOrders: [], stockRows: [] };
     let detailRequest = 0;
 
     function showView() {
-      const view = views.find(item => '#' + item.id === location.hash
-        && (isAdmin || !item.hasAttribute('data-admin-view'))) || views[0];
+      const allowedViews = views.filter(item => {
+        if (isBranchEmployee) return item.hasAttribute('data-branch-view');
+        return !item.hasAttribute('data-branch-view') && (isAdmin || !item.hasAttribute('data-admin-view'));
+      });
+      const view = allowedViews.find(item => '#' + item.id === location.hash) || allowedViews[0];
       for (const item of views) item.hidden = item !== view;
       for (const link of navigation) {
         const active = link.hash === '#' + view.id;
@@ -568,6 +606,33 @@
       }
     }
 
+    function updateInviteBranch() {
+      const forBranch = $('inviteRole').value === 'BRANCH_EMPLOYEE';
+      $('inviteBranchField').hidden = !forBranch;
+      $('inviteBranch').disabled = !forBranch;
+      $('inviteBranch').required = forBranch;
+      $('inviteBranchEmpty').hidden = !forBranch || $('inviteBranch').options.length > 1;
+    }
+
+    async function refreshBranches() {
+      const branches = await api('/branches');
+      if (!isAdmin) return;
+      const table = $('branchRows');
+      table.replaceChildren();
+      if (!branches.length) emptyRow(table, 'Henüz şube yok.', 1);
+      const select = $('inviteBranch');
+      const selected = select.value;
+      select.replaceChildren(new Option('Şube seç', ''));
+      for (const branch of branches) {
+        const row = document.createElement('tr');
+        cell(row, branch.name);
+        table.append(row);
+        select.add(new Option(branch.name, String(branch.id)));
+      }
+      select.value = branches.some(branch => String(branch.id) === selected) ? selected : '';
+      updateInviteBranch();
+    }
+
     async function refresh() {
       const ordersPath = isAdmin ? '/operations/orders' : '/orders';
       const [products, loadedOrders] = await Promise.all([api('/products'), api(ordersPath)]);
@@ -633,9 +698,20 @@
         const login = await api('/auth/login', 'POST', { username, password: $('password').value });
         token = login.accessToken;
         isAdmin = login.role === 'ADMIN';
-        try { await refresh(); }
-        catch (error) { token = ''; isAdmin = false; throw error; }
+        isBranchEmployee = login.role === 'BRANCH_EMPLOYEE';
+        try {
+          if (isAdmin) await Promise.all([refresh(), refreshBranches()]);
+          else if (!isBranchEmployee) await refresh();
+        } catch (error) {
+          token = '';
+          isAdmin = false;
+          isBranchEmployee = false;
+          throw error;
+        }
         document.querySelectorAll('[data-admin-only]').forEach(element => { element.hidden = !isAdmin; });
+        document.querySelectorAll('[data-central-only]').forEach(element => { element.hidden = isBranchEmployee; });
+        document.querySelectorAll('[data-branch-only]').forEach(element => { element.hidden = !isBranchEmployee; });
+        $('assignedBranch').textContent = login.branchName || '';
         $('all-orders-description').textContent = isAdmin
           ? 'Tüm satış kanallarından merkeze kaydedilen siparişler.' : 'Hesabına ait siparişler.';
         $('password').value = '';
@@ -649,11 +725,14 @@
     $('logout').addEventListener('click', () => {
       token = '';
       isAdmin = false;
+      isBranchEmployee = false;
       selectedStockProductId = null;
       $('stockForm').hidden = true;
       $('invitationLink').value = '';
       $('invitationResult').hidden = true;
       $('inviteForm').reset();
+      $('branchForm').reset();
+      updateInviteBranch();
       selectedDetail = 'recent';
       detailRequest++;
       renderSyncSummary(null);
@@ -680,12 +759,29 @@
       showView();
     });
 
+    $('branchForm').addEventListener('submit', event => {
+      event.preventDefault();
+      action(event.submitter, async () => {
+        const branch = await api('/branches', 'POST', { name: $('branchName').value.trim() });
+        if (!isAdmin) return;
+        $('branchForm').reset();
+        await refreshBranches();
+        if (!isAdmin) return;
+        $('inviteBranch').value = String(branch.id);
+        notify('Şube kaydedildi.');
+      });
+    });
+
+    $('inviteRole').addEventListener('change', updateInviteBranch);
     $('inviteForm').addEventListener('submit', event => {
       event.preventDefault();
       $('invitationResult').hidden = true;
       $('invitationLink').value = '';
       action(event.submitter, async () => {
-        const invitation = await api('/auth/accounts', 'POST', { username: $('inviteUsername').value });
+        const role = $('inviteRole').value;
+        const request = { username: $('inviteUsername').value, role };
+        if (role === 'BRANCH_EMPLOYEE') request.branchId = Number($('inviteBranch').value);
+        const invitation = await api('/auth/accounts', 'POST', request);
         if (!isAdmin) return;
         const link = new URL(location.pathname, location.origin);
         link.hash = 'activate=' + invitation.token;

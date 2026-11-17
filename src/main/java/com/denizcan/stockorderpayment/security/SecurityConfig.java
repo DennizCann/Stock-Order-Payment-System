@@ -48,6 +48,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/v1/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/**").hasRole("ADMIN")
+                        .requestMatchers("/api/v1/**").hasAnyRole("USER", "ADMIN")
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())

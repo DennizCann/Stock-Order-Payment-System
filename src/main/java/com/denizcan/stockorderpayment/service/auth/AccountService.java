@@ -1,7 +1,9 @@
 package com.denizcan.stockorderpayment.service.auth;
 
+import com.denizcan.stockorderpayment.domain.branch.Branch;
 import com.denizcan.stockorderpayment.domain.user.Role;
 import com.denizcan.stockorderpayment.domain.user.User;
+import com.denizcan.stockorderpayment.repository.branch.BranchRepository;
 import com.denizcan.stockorderpayment.repository.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -29,21 +31,24 @@ public class AccountService {
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final UserRepository users;
+    private final BranchRepository branches;
     private final PasswordEncoder passwords;
 
     @Transactional
-    public String invite(String username) {
+    public String invite(String username, Role requestedRole, Long branchId) {
         validateUsername(username);
+        Role role = requestedRole == null ? Role.USER : requestedRole;
+        Branch branch = branchForInvitation(role, branchId);
         byte[] bytes = new byte[32];
         RANDOM.nextBytes(bytes);
         String token = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
         User user = users.findByUsernameForUpdate(username)
-                .orElseGet(() -> new User(username, passwords.encode(token), Role.USER));
+                .orElseGet(() -> new User(username, passwords.encode(token), role));
         if (user.getId() != null && (user.isEnabled() || user.getActivationTokenHash() == null
-                || user.getRole() != Role.USER)) {
+                || user.getRole() == Role.ADMIN)) {
             throw accountExists();
         }
-        user.prepareActivation(hash(token), Instant.now().plus(Duration.ofHours(24)));
+        user.prepareActivation(hash(token), Instant.now().plus(Duration.ofHours(24)), role, branch);
         try {
             users.saveAndFlush(user);
         } catch (DataIntegrityViolationException exception) {
@@ -78,6 +83,18 @@ public class AccountService {
         } else if (existing.getRole() != Role.ADMIN || !existing.isEnabled()) {
             throw new IllegalStateException("Bootstrap username must identify an active administrator or be unused.");
         }
+    }
+
+    private Branch branchForInvitation(Role role, Long branchId) {
+        if (role == Role.USER && branchId == null) {
+            return null;
+        }
+        if (role != Role.BRANCH_EMPLOYEE || branchId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Merkez çalışanı veya şube çalışanı seç. Şube çalışanına bir şube ata.");
+        }
+        return branches.findById(branchId).orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.BAD_REQUEST, "Seçilen şube bulunamadı."));
     }
 
     private static void validateUsername(String username) {
