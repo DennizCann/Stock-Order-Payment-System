@@ -115,6 +115,8 @@
     .edit-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
     .edit-grid form { padding: 0 19px 19px; }
     .edit-grid button { justify-self: start; }
+    #productForm, #stockForm { padding: 0 19px 19px; }
+    #productForm button, #stockForm button { justify-self: start; }
     @media (max-width: 1120px) {
       .channel-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 15px; }
       .channel-list li + li { border-top: 0; }
@@ -215,10 +217,6 @@
             <h1 id="overview-title">Genel Bakış</h1>
             <p class="muted">Bugünkü siparişleri ve kanal eşitlemesinde dikkat gerektiren durumları gör.</p>
           </div>
-          <div class="actions">
-            <button class="secondary" data-refresh type="button">Yenile</button>
-            <button class="primary" data-channel-action="import" type="button" data-admin-only hidden>Siparişleri al</button>
-          </div>
         </div>
 
         <section class="metrics" aria-label="Operasyon özeti">
@@ -267,7 +265,7 @@
         </section>
 
         <section id="channels" data-view data-admin-view hidden aria-labelledby="channels-title">
-          <div class="hero"><div><p class="eyebrow">Operasyon paneli</p><h1 id="channels-title">Satış Kanalları</h1><p class="muted">Kanal simülatörlerini aç ve stok bilgilerini gönder.</p></div></div>
+          <div class="hero"><div><p class="eyebrow">Operasyon paneli</p><h1 id="channels-title">Satış Kanalları</h1><p class="muted">Kanal simülatörlerini aç ve stok bilgilerini gönder.</p></div><div class="actions"><button class="secondary" data-refresh type="button">Yenile</button><button class="primary" data-channel-action="import" type="button">Siparişleri al</button></div></div>
           <section class="card" aria-label="Kanal simülatörleri">
             <header class="card-head"><div><h2>Kanal simülatörleri</h2><p class="muted">Beş yerel simülatör · yeni sekmede açılır</p></div></header>
             <ul class="channel-list">
@@ -287,25 +285,24 @@
           <header class="card-head"><div><h2 id="inventory-title">Stok görünümü</h2><p class="muted">Ürün bazında fiziksel, ayrılmış ve satılabilir stok</p></div></header>
           <div class="table-wrap" role="region" aria-label="Stok tablosu" tabindex="0">
             <table>
-              <thead><tr><th scope="col">ID</th><th scope="col">SKU</th><th scope="col">Ürün</th><th scope="col" class="numeric">Fiziksel</th><th scope="col" class="numeric">Ayrılmış</th><th scope="col" class="numeric">Satılabilir</th></tr></thead>
+              <thead><tr><th scope="col">ID</th><th scope="col">SKU</th><th scope="col">Ürün</th><th scope="col" class="numeric">Fiziksel</th><th scope="col" class="numeric">Ayrılmış</th><th scope="col" class="numeric">Satılabilir</th><th scope="col" data-admin-only hidden>İşlem</th></tr></thead>
               <tbody id="stockRows"></tbody>
             </table>
           </div>
           </section>
-          <div class="edit-grid section" data-admin-only hidden>
+          <div class="section" data-admin-only hidden>
             <section class="card" aria-labelledby="product-title">
               <header class="card-head"><h2 id="product-title">Ürün ekle</h2></header>
               <form id="productForm" class="form-stack">
                 <label>Ürün adı<input id="productName" required></label>
                 <label>SKU<input id="productSku" maxlength="64" required></label>
                 <label>Fiyat<input id="productPrice" type="number" min="0.01" step="0.01" required></label>
-                <button type="submit" class="primary">Ürünü kaydet</button>
+                <label>Başlangıç stoğu<input id="initialStockQuantity" type="number" min="0" value="0" required></label>
+                <button type="submit" class="primary">Ürün ve stoğu kaydet</button>
               </form>
-            </section>
-            <section class="card" aria-labelledby="stock-title">
-              <header class="card-head"><h2 id="stock-title">Stok düzenle</h2></header>
-              <form id="stockForm" class="form-stack">
-                <label>Ürün ID<input id="productId" type="number" min="1" required></label>
+              <form id="stockForm" class="form-stack" hidden>
+                <h3 id="stock-title">Stok düzenle</h3>
+                <p id="selectedStockProduct"></p>
                 <label>Fiziksel stok<input id="stockQuantity" type="number" min="0" required></label>
                 <button type="submit" class="primary">Stoku kaydet</button>
               </form>
@@ -353,6 +350,7 @@
       RELEASE: 'Ayrılan stoğu serbest bırakma', CONSUME: 'Ayrılan stoğu düşme'
     };
     const recentOrderLimit = 6;
+    let selectedStockProductId = null;
     const numbers = new Intl.NumberFormat('tr-TR');
     const signedNumbers = new Intl.NumberFormat('tr-TR', { signDisplay: 'exceptZero' });
     const amounts = new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -579,7 +577,7 @@
       }
       const body = $('stockRows');
       body.replaceChildren();
-      if (!stockRows.length) emptyRow(body, 'Henüz ürün yok.');
+      if (!stockRows.length) emptyRow(body, 'Henüz ürün yok.', isAdmin ? 7 : 6);
       let outOfStock = 0;
       for (const { product, stock } of stockRows) {
         const row = document.createElement('tr');
@@ -589,6 +587,21 @@
         cell(row, stock ? numbers.format(stock.quantity) : 'Tanımlanmamış', 'numeric');
         cell(row, stock ? numbers.format(stock.reservedQuantity) : null, 'numeric');
         cell(row, stock ? numbers.format(stock.availableQuantity) : null, 'numeric');
+        if (isAdmin) {
+          const edit = document.createElement('button');
+          edit.type = 'button';
+          edit.className = 'secondary';
+          edit.textContent = 'Stok düzenle';
+          edit.addEventListener('click', () => {
+            selectedStockProductId = product.id;
+            $('selectedStockProduct').textContent = product.name + ' · ' + product.sku;
+            $('stockQuantity').value = stock?.quantity ?? 0;
+            $('stockForm').hidden = false;
+            $('stockForm').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            $('stockQuantity').focus();
+          });
+          cell(row, edit);
+        }
         body.append(row);
         if (stock?.availableQuantity === 0) outOfStock++;
       }
@@ -636,6 +649,8 @@
     $('logout').addEventListener('click', () => {
       token = '';
       isAdmin = false;
+      selectedStockProductId = null;
+      $('stockForm').hidden = true;
       $('invitationLink').value = '';
       $('invitationResult').hidden = true;
       $('inviteForm').reset();
@@ -726,16 +741,26 @@
           sku: $('productSku').value,
           price: Number($('productPrice').value)
         });
-        $('productId').value = product.id;
+        try {
+          await api('/products/' + product.id + '/stock', 'POST', {
+            quantity: Number($('initialStockQuantity').value)
+          });
+        } catch (error) {
+          await refresh();
+          notify('Ürün oluşturuldu, fakat başlangıç stoğu kaydedilemedi. Listedeki üründen stoğu düzenle: ' + error.message, true);
+          return;
+        }
         $('productForm').reset();
-        notify('Ürün eklendi (#' + product.id + ').');
+        $('initialStockQuantity').value = 0;
+        notify('Ürün ve başlangıç stoğu kaydedildi.');
         await refresh();
       });
     });
     $('stockForm').addEventListener('submit', event => {
       event.preventDefault();
       action(event.submitter, async () => {
-        const productId = Number($('productId').value);
+        const productId = selectedStockProductId;
+        if (productId === null) throw new Error('Önce listeden bir ürün seç.');
         const stock = await readStock(productId);
         await api('/products/' + productId + '/stock', stock ? 'PATCH' : 'POST', {
           quantity: Number($('stockQuantity').value)
