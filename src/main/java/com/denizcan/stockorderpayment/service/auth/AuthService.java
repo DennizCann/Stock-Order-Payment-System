@@ -1,6 +1,7 @@
 package com.denizcan.stockorderpayment.service.auth;
 
 import com.denizcan.stockorderpayment.domain.user.User;
+import com.denizcan.stockorderpayment.domain.user.Permission;
 import com.denizcan.stockorderpayment.repository.user.UserRepository;
 import com.denizcan.stockorderpayment.security.JwtService;
 import com.denizcan.stockorderpayment.web.auth.dto.AuthResponse;
@@ -35,6 +36,8 @@ public class AuthService {
 
         String token = jwtService.generateToken(user.getUsername(), user.getRole().name());
         String branchName = user.getBranch() == null ? null : user.getBranch().getName();
-        return AuthResponse.bearer(token, user.getUsername(), user.getRole().name(), branchName);
+        String roleName = user.getEmployeeRole() == null ? user.getRole().name() : user.getEmployeeRole().getName();
+        return AuthResponse.bearer(token, user.getUsername(), user.getRole().name(), branchName,
+                roleName, Permission.forUser(user));
     }
 }
