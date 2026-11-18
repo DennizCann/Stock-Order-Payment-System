@@ -142,6 +142,9 @@
       .topbar { min-height: 52px; }
       .user-area span { display: none; }
     }
+    .permission-options { border: 1px solid #dbe3f0; border-radius: 10px; padding: 16px; }
+    .permission-options label { display: flex; align-items: center; gap: 10px; padding: 7px 0; }
+    .permission-options input[type="checkbox"] { width: 18px; height: 18px; min-height: 0; padding: 0; margin: 0; }
   </style>
 </head>
 <body>
@@ -392,16 +395,42 @@
         </section>
         <section id="accounts" data-view data-admin-view hidden aria-labelledby="accounts-title">
           <div class="hero"><div><p class="eyebrow">Yönetim paneli</p><h1 id="accounts-title">Kullanıcılar</h1><p class="muted">Çalışanlar için hesap oluştur ve parola belirleme bağlantısı ver.</p></div></div>
+          <section class="card account-form section" aria-labelledby="employee-role-title">
+            <header class="card-head"><div><h2 id="employee-role-title">Roller ve yetkiler</h2><p class="muted">Rolü kullanan çalışanların izinleri birlikte güncellenir.</p></div></header>
+            <form id="employeeRoleForm" class="form-stack">
+              <label>Rol adı<input id="employeeRoleName" maxlength="64" required></label>
+              <label>Çalışma alanı
+                <select id="employeeRoleScope">
+                  <option value="USER">Merkez</option>
+                  <option value="BRANCH_EMPLOYEE">Şube</option>
+                </select>
+              </label>
+              <fieldset class="permission-options"><legend>Yetkiler</legend><div id="employeeRolePermissions"></div></fieldset>
+              <div class="actions">
+                <button class="primary" type="submit">Rolü kaydet</button>
+                <button id="cancelRoleEdit" class="secondary" type="button" hidden>Yeni rol oluştur</button>
+              </div>
+              <p class="muted">Yönetici hesabı tüm yönetim işlemlerine erişebilir. Çalışan rolleri için aşağıdaki izinleri seçebilirsin.</p>
+            </form>
+            <div class="table-wrap" role="region" aria-label="Çalışan rolleri" tabindex="0">
+              <table><thead><tr><th scope="col">Rol</th><th scope="col">Çalışma alanı</th><th scope="col">Yetkiler</th><th scope="col">İşlem</th></tr></thead><tbody id="employeeRoleRows"></tbody></table>
+            </div>
+          </section>
           <section class="card account-form" aria-labelledby="invite-title">
             <header class="card-head"><div><h2 id="invite-title">Çalışan hesabı</h2><p class="muted">Bekleyen bir hesap için aynı kullanıcı adıyla yeni bağlantı oluşturabilirsin.</p></div></header>
             <form id="inviteForm" class="form-stack">
               <label>Kullanıcı adı<input id="inviteUsername" autocomplete="off" minlength="3" maxlength="64" pattern="[A-Za-z0-9._\-]{3,64}" required></label>
               <label>Rol
-                <select id="inviteRole">
+                <select id="inviteRole" required>
                   <option value="USER">Merkez çalışanı</option>
                   <option value="BRANCH_EMPLOYEE">Şube çalışanı</option>
                 </select>
               </label>
+              <fieldset class="permission-options">
+                <legend>Bu çalışanın yetkileri</legend>
+                <div id="invitePermissions"></div>
+                <p class="muted">Rolün hazır izinlerini bu çalışan için artırıp azaltabilirsin.</p>
+              </fieldset>
               <label id="inviteBranchField" hidden>Şube
                 <select id="inviteBranch" disabled></select>
               </label>
@@ -446,19 +475,111 @@
     let token = '';
     let isAdmin = false;
     let isBranchEmployee = false;
+    let permissions = new Set();
+    let employeeRoles = [];
+    let permissionOptions = [];
+    let editingRoleId = null;
     let activationToken = '';
     let selectedDetail = 'recent';
     let overviewData = { recentOrders: [], todayOrders: [], stockRows: [] };
     let detailRequest = 0;
 
+    function can(permission) {
+      return isAdmin || permissions.has(permission);
+    }
+
+    function canView(view) {
+      if (view.hasAttribute('data-admin-view')) return isAdmin;
+      if (view.hasAttribute('data-branch-view')) return isBranchEmployee && can('BRANCH_STOCK_VIEW');
+      if (isBranchEmployee) return false;
+      switch (view.id) {
+        case 'overview': return can('STOCK_VIEW') && can('ORDERS_VIEW');
+        case 'orders': return can('ORDERS_VIEW');
+        case 'products': return can('PRODUCTS_VIEW');
+        case 'inventory': return can('STOCK_VIEW');
+        case 'channels': return isAdmin;
+        default: return false;
+      }
+    }
+
+    function selectedInviteRole() {
+      const selection = $('inviteRole').value;
+      const employeeRole = employeeRoles.find(role => 'profile:' + role.id === selection);
+      return { scope: employeeRole?.scope || selection, employeeRole };
+    }
+
+    function renderRolePermissions(selected = []) {
+      const body = $('employeeRolePermissions');
+      body.replaceChildren();
+      for (const permission of permissionOptions.filter(item => item.scope === $('employeeRoleScope').value)) {
+        const label = document.createElement('label');
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.name = 'permission';
+        input.value = permission.code;
+        input.checked = selected.includes(permission.code);
+        label.append(input, document.createTextNode(permission.label));
+        body.append(label);
+      }
+    }
+
+    function resetRoleForm() {
+      editingRoleId = null;
+      $('employeeRoleForm').reset();
+      $('employeeRoleScope').disabled = false;
+      $('cancelRoleEdit').hidden = true;
+      renderRolePermissions();
+    }
+
+    async function refreshRoles() {
+      const session = token;
+      const [roles, options] = await Promise.all([api('/roles'), api('/roles/permissions')]);
+      if (token !== session || !isAdmin) return;
+      employeeRoles = roles;
+      permissionOptions = options;
+      const select = $('inviteRole');
+      const selected = select.value;
+      select.replaceChildren(new Option('Merkez çalışanı (hazır)', 'USER'), new Option('Şube çalışanı (hazır)', 'BRANCH_EMPLOYEE'));
+      for (const role of roles) {
+        select.add(new Option(role.name + (role.scope === 'USER' ? ' · Merkez' : ' · Şube'), 'profile:' + role.id));
+      }
+      if ([...select.options].some(option => option.value === selected)) select.value = selected;
+      const body = $('employeeRoleRows');
+      body.replaceChildren();
+      if (!roles.length) emptyRow(body, 'Henüz özel rol tanımlanmamış.', 4);
+      for (const role of roles) {
+        const row = document.createElement('tr');
+        cell(row, role.name);
+        cell(row, role.scope === 'USER' ? 'Merkez' : 'Şube');
+        cell(row, role.permissions.map(code => options.find(item => item.code === code)?.label || code).join(', '));
+        const edit = document.createElement('button');
+        edit.type = 'button';
+        edit.className = 'secondary';
+        edit.textContent = 'Düzenle';
+        edit.addEventListener('click', () => {
+          editingRoleId = role.id;
+          $('employeeRoleName').value = role.name;
+          $('employeeRoleScope').value = role.scope;
+          $('employeeRoleScope').disabled = true;
+          $('cancelRoleEdit').hidden = false;
+          renderRolePermissions(role.permissions);
+          $('employeeRoleForm').scrollIntoView({behavior:'smooth',block:'center'});
+          $('employeeRoleName').focus();
+        });
+        cell(row, edit);
+        body.append(row);
+      }
+      if (editingRoleId === null) renderRolePermissions();
+      updateInviteBranch();
+    }
+
     function showView() {
-      const allowedViews = views.filter(item => {
-        if (isBranchEmployee) return item.hasAttribute('data-branch-view');
-        return !item.hasAttribute('data-branch-view') && (isAdmin || !item.hasAttribute('data-admin-view'));
-      });
+      const allowedViews = views.filter(canView);
       const view = allowedViews.find(item => '#' + item.id === location.hash) || allowedViews[0];
       for (const item of views) item.hidden = item !== view;
       for (const link of navigation) {
+        const target = views.find(item => '#' + item.id === link.hash);
+        link.hidden = !target || !canView(target);
         const active = link.hash === '#' + view.id;
         link.classList.toggle('active', active);
         if (active) link.setAttribute('aria-current', 'page');
@@ -660,8 +781,33 @@
       }
     }
 
+    function renderInvitePermissions() {
+      const { scope, employeeRole } = selectedInviteRole();
+      const base = employeeRole?.permissions || permissionOptions.filter(option => option.scope === scope).map(option => option.code);
+      const body = $('invitePermissions');
+      body.replaceChildren();
+      for (const permission of permissionOptions.filter(option => option.scope === scope)) {
+        const label = document.createElement('label');
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.name = 'invitePermission';
+        input.value = permission.code;
+        input.dataset.base = String(base.includes(permission.code));
+        input.checked = base.includes(permission.code);
+        input.addEventListener('change', () => {
+          const dependent = { BRANCH_STOCK_VIEW: 'BRANCH_SALE_CREATE', ORDERS_VIEW: 'ORDERS_CREATE' };
+          const prerequisite = { BRANCH_SALE_CREATE: 'BRANCH_STOCK_VIEW', ORDERS_CREATE: 'ORDERS_VIEW' };
+          const linked = body.querySelector('input[value="' + (input.checked ? prerequisite[input.value] : dependent[input.value]) + '"]');
+          if (linked) linked.checked = input.checked;
+        });
+        label.append(input, document.createTextNode(permission.label));
+        body.append(label);
+      }
+    }
+
     function updateInviteBranch() {
-      const forBranch = $('inviteRole').value === 'BRANCH_EMPLOYEE';
+      renderInvitePermissions();
+      const forBranch = selectedInviteRole().scope === 'BRANCH_EMPLOYEE';
       $('inviteBranchField').hidden = !forBranch;
       $('inviteBranch').disabled = !forBranch;
       $('inviteBranch').required = forBranch;
@@ -763,10 +909,15 @@
 
     async function refresh() {
       const ordersPath = isAdmin ? '/operations/orders' : '/orders';
-      const [products, loadedOrders] = await Promise.all([api('/products'), api(ordersPath)]);
+      const [products, loadedOrders] = await Promise.all([
+        can('PRODUCTS_VIEW') || can('STOCK_VIEW') ? api('/products') : [],
+        can('ORDERS_VIEW') ? api(ordersPath) : []
+      ]);
       const stockRows = [];
-      for (const product of products) {
-        stockRows.push({ product, stock: await readStock(product.id) });
+      if (can('STOCK_VIEW')) {
+        for (const product of products) {
+          stockRows.push({ product, stock: await readStock(product.id) });
+        }
       }
       const body = $('stockRows');
       body.replaceChildren();
@@ -830,24 +981,28 @@
         token = login.accessToken;
         isAdmin = login.role === 'ADMIN';
         isBranchEmployee = login.role === 'BRANCH_EMPLOYEE';
+        permissions = new Set(login.permissions || []);
         try {
-          if (isAdmin) await Promise.all([refresh(), refreshBranches()]);
+          if (!isAdmin && !permissions.size) throw new Error('Hesabına henüz yetki tanımlanmamış. Yöneticiyle görüş.');
+          if (isAdmin) await Promise.all([refresh(), refreshBranches(), refreshRoles()]);
           else if (isBranchEmployee) await refreshEmployeeStock();
           else await refresh();
         } catch (error) {
           token = '';
           isAdmin = false;
           isBranchEmployee = false;
+          permissions = new Set();
           throw error;
         }
         document.querySelectorAll('[data-admin-only]').forEach(element => { element.hidden = !isAdmin; });
         document.querySelectorAll('[data-central-only]').forEach(element => { element.hidden = isBranchEmployee; });
         document.querySelectorAll('[data-branch-only]').forEach(element => { element.hidden = !isBranchEmployee; });
+        $('branchSaleForm').closest('section').hidden = !can('BRANCH_SALE_CREATE');
         $('assignedBranch').textContent = login.branchName || '';
         $('all-orders-description').textContent = isAdmin
           ? 'Tüm satış kanallarından merkeze kaydedilen siparişler.' : 'Hesabına ait siparişler.';
         $('password').value = '';
-        $('signedInUser').textContent = username;
+        $('signedInUser').textContent = username + (login.roleName && login.roleName !== login.role ? ' · ' + login.roleName : '');
         $('login').hidden = true;
         $('workspace').hidden = false;
         showView();
@@ -858,6 +1013,10 @@
       token = '';
       isAdmin = false;
       isBranchEmployee = false;
+      permissions = new Set();
+      employeeRoles = [];
+      permissionOptions = [];
+      resetRoleForm();
       selectedStockProductId = null;
       $('stockForm').hidden = true;
       $('invitationLink').value = '';
@@ -963,15 +1122,47 @@
       });
     });
 
+    $('employeeRoleScope').addEventListener('change', () => renderRolePermissions());
+    $('cancelRoleEdit').addEventListener('click', resetRoleForm);
+    $('employeeRoleForm').addEventListener('submit', event => {
+      event.preventDefault();
+      action(event.submitter, async () => {
+        const session = token;
+        const selected = [...$('employeeRolePermissions').querySelectorAll('input:checked')].map(input => input.value);
+        if (!selected.length) throw new Error('En az bir yetki seç.');
+        const request = {
+          name: $('employeeRoleName').value.trim(),
+          scope: $('employeeRoleScope').value,
+          permissions: selected
+        };
+        const path = editingRoleId === null ? '/roles' : '/roles/' + editingRoleId;
+        const saved = await api(path, editingRoleId === null ? 'POST' : 'PUT', request);
+        if (token !== session || !isAdmin) return;
+        resetRoleForm();
+        await refreshRoles();
+        $('inviteRole').value = 'profile:' + saved.id;
+        updateInviteBranch();
+        notify('Rol kaydedildi. Çalışan eklerken bu rolü seçebilirsin.');
+      });
+    });
+
     $('inviteRole').addEventListener('change', updateInviteBranch);
     $('inviteForm').addEventListener('submit', event => {
       event.preventDefault();
       $('invitationResult').hidden = true;
       $('invitationLink').value = '';
       action(event.submitter, async () => {
-        const role = $('inviteRole').value;
-        const request = { username: $('inviteUsername').value, role };
-        if (role === 'BRANCH_EMPLOYEE') request.branchId = Number($('inviteBranch').value);
+        const { scope, employeeRole } = selectedInviteRole();
+        const choices = [...$('invitePermissions').querySelectorAll('input')];
+        if (!choices.some(input => input.checked)) throw new Error('Çalışana en az bir yetki bırak.');
+        const request = {
+          username: $('inviteUsername').value,
+          role: scope,
+          excludedPermissions: choices.filter(input => !input.checked && input.dataset.base === 'true').map(input => input.value),
+          addedPermissions: choices.filter(input => input.checked && input.dataset.base === 'false').map(input => input.value)
+        };
+        if (employeeRole) request.employeeRoleId = employeeRole.id;
+        if (scope === 'BRANCH_EMPLOYEE') request.branchId = Number($('inviteBranch').value);
         const invitation = await api('/auth/accounts', 'POST', request);
         if (!isAdmin) return;
         const link = new URL(location.pathname, location.origin);

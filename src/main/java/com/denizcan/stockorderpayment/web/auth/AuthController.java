@@ -1,6 +1,8 @@
 package com.denizcan.stockorderpayment.web.auth;
 
 import com.denizcan.stockorderpayment.domain.user.Role;
+import com.denizcan.stockorderpayment.domain.user.Permission;
+import java.util.Set;
 import com.denizcan.stockorderpayment.service.auth.AccountService;
 import com.denizcan.stockorderpayment.service.auth.AuthService;
 import com.denizcan.stockorderpayment.web.auth.dto.AuthResponse;
@@ -32,7 +34,7 @@ public class AuthController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Invitation> invite(@RequestBody InviteRequest request) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
-                .body(new Invitation(accounts.invite(request.username(), request.role(), request.branchId())));
+                .body(new Invitation(accounts.invite(request.username(), request.role(), request.branchId(), request.employeeRoleId(), request.excludedPermissions(), request.addedPermissions())));
     }
 
     @PostMapping("/activate")
@@ -41,7 +43,8 @@ public class AuthController {
         return ResponseEntity.noContent().build();
     }
 
-    public record InviteRequest(String username, Role role, Long branchId) {}
+    public record InviteRequest(String username, Role role, Long branchId, Long employeeRoleId,
+                                Set<Permission> excludedPermissions, Set<Permission> addedPermissions) {}
     public record Invitation(String token) {}
     public record ActivateRequest(String token, String password) {}
 }

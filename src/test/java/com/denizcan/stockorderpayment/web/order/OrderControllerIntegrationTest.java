@@ -36,7 +36,7 @@ class OrderControllerIntegrationTest {
     @Autowired UserRepository users;
 
     @Test
-    @WithMockUser(username = "user", roles = "USER")
+    @WithMockUser(username = "user", authorities = {"ROLE_USER", "ORDERS_VIEW", "ORDERS_CREATE"})
     void authenticatedIdentityOverridesAnyClientSuppliedUserId() throws Exception {
         Product product = products.save(new Product("Demo", UUID.randomUUID().toString(), new BigDecimal("25.00")));
         stocks.save(new Stock(product.getId(), 4));
@@ -56,7 +56,7 @@ class OrderControllerIntegrationTest {
     }
 
     @Test
-    @WithMockUser(username = "user", roles = "USER")
+    @WithMockUser(username = "user", authorities = {"ROLE_USER", "ORDERS_VIEW", "ORDERS_CREATE"})
     void rejectsInvalidItems() throws Exception {
         mvc.perform(post("/api/v1/orders").contentType(MediaType.APPLICATION_JSON).content("{\"items\":[]}"))
                 .andExpect(status().isBadRequest());
