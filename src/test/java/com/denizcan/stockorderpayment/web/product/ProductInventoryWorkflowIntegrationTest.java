@@ -45,7 +45,7 @@ class ProductInventoryWorkflowIntegrationTest {
         assertThat(first.path("tags").size()).isEqualTo(2);
         mvc.perform(put("/api/v1/products/" + id).header("Authorization", admin).contentType(MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsString(Map.of("name", "Düzenlenen ürün", "sku", first.path("sku").asText(),
-                        "price", 10, "tags", List.of(tag("Marka", "Bosch"), tag("Malzeme", "Ahşap"))))))
+                        "price", 10, "version", first.path("version").asLong(), "tags", List.of(tag("Marka", "Bosch"), tag("Malzeme", "Ahşap"))))))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.quantity").value(8));
         mvc.perform(get("/api/v1/products/" + id).header("Authorization", admin))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.tags.length()").value(2));

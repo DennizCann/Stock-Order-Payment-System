@@ -54,6 +54,7 @@ public class OrderService {
         order.assignExternalReference(source, externalId, payloadHash);
         quantitiesByProductId.forEach((productId, quantity) -> {
             Product product = productsById.get(productId);
+            if (product.getPrice() == null) throw new InvalidOrderException("Sipariş için ürünün fiyatı tanımlanmalı: " + product.getSku());
             order.addItem(new OrderItem(productId, quantity, product.getPrice()));
         });
 

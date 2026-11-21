@@ -16,6 +16,7 @@ import com.denizcan.stockorderpayment.domain.product.ProductTag;
 import com.denizcan.stockorderpayment.service.stock.StockService;
 import com.denizcan.stockorderpayment.web.stock.dto.StockQuantityRequest;
 import com.denizcan.stockorderpayment.web.product.dto.ProductTagRequest;
+import com.denizcan.stockorderpayment.web.product.dto.UpdateProductRequest;
 import jakarta.persistence.EntityManager;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
@@ -62,15 +63,22 @@ public class ProductService {
     }
 
     @Transactional
-    public ProductResponse update(Long id, CreateProductRequest request) {
-        Product product = productRepository.findById(id).orElseThrow(() -> NotFoundException.product(id));
+    public ProductResponse update(Long id, UpdateProductRequest request) {
+        Product product = productRepository.findForUpdate(id).orElseThrow(() -> NotFoundException.product(id));
         if (!product.isActive()) throw new ResponseStatusException(HttpStatus.CONFLICT, "Arşivlenmiş ürün düzenlenemez.");
+        if (request.version() == null || product.getVersion() != request.version()) throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "Ürün başka bir işlemde değişmiş. Güncel bilgileri açıp tekrar düzenle.");
         if (productRepository.existsBySkuAndIdNot(request.sku().strip(), id)) throw new DuplicateSkuException(request.sku());
-        if (request.quantity() != null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                "Adedi değiştirmek için stok hareketi oluştur.");
         product.revise(request.name(), request.sku(), request.price());
         product.replaceTags(tags(request.tags()));
-        return ProductResponse.from(product);
+        return ProductResponse.from(productRepository.saveAndFlush(product));
+    }
+
+    @Transactional
+    public ProductResponse restore(Long id) {
+        Product product=productRepository.findForUpdate(id).orElseThrow(()->NotFoundException.product(id));
+        product.restore();
+        return ProductResponse.from(productRepository.saveAndFlush(product));
     }
 
     @Transactional

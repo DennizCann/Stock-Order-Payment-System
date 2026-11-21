@@ -8,7 +8,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -19,6 +18,8 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import com.denizcan.stockorderpayment.web.product.dto.ProductTagRequest;
+import com.denizcan.stockorderpayment.web.product.dto.UpdateProductRequest;
+import org.springframework.web.bind.annotation.PostMapping;
 
 @RestController
 @RequestMapping("/api/v1/products")
@@ -29,6 +30,7 @@ public class ProductController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @org.springframework.security.access.prepost.PreAuthorize("#request.quantity() == null or #request.quantity() == 0 or hasAnyAuthority('ROLE_ADMIN','STOCK_MANAGE')")
     public ProductResponse create(@Valid @RequestBody CreateProductRequest request) {
         return productService.create(request);
     }
@@ -42,9 +44,13 @@ public class ProductController {
     public List<ProductTagRequest> tags() { return productService.tagSuggestions(); }
 
     @PutMapping("/{id}")
-    public ProductResponse update(@PathVariable Long id, @Valid @RequestBody CreateProductRequest request) {
+    public ProductResponse update(@PathVariable Long id, @Valid @RequestBody UpdateProductRequest request) {
         return productService.update(id, request);
     }
+
+    @PostMapping("/{id}/restore")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyAuthority('ROLE_ADMIN','PRODUCTS_EDIT')")
+    public ProductResponse restore(@PathVariable Long id) { return productService.restore(id); }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)

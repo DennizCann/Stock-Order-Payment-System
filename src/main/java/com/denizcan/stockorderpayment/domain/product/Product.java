@@ -35,8 +35,12 @@ public class Product {
     @Column(nullable = false, unique = true, length = 64)
     private String sku;
 
-    @Column(nullable = false, precision = 19, scale = 2)
+    @Column(precision = 19, scale = 2)
     private BigDecimal price;
+
+    @jakarta.persistence.Version
+    @Column(nullable = false)
+    private long version;
 
     @org.hibernate.annotations.ColumnDefault("0")
     @Column(nullable = false)
@@ -45,6 +49,8 @@ public class Product {
     @org.hibernate.annotations.ColumnDefault("true")
     @Column(nullable = false)
     private boolean active = true;
+
+    public void restore() { active = true; }
 
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "product_id", nullable = false)

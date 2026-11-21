@@ -438,14 +438,15 @@
             <form id="productForm" class="form-stack">
               <label>Ürün adı<input id="productName" maxlength="255" required></label>
               <label>SKU<input id="productSku" maxlength="64" required></label>
-              <label>Fiyat<input id="productPrice" type="number" min="0.01" step="0.01" required></label>
               <label id="initialStockField">Başlangıç adedi · Merkez<input id="initialStockQuantity" type="number" min="0" max="2147483647" value="0" required></label>
-              <fieldset class="permission-options"><legend>Etiketler</legend>
+              <p id="initialStockHint" class="muted">Şube açmak zorunda değilsin. Başlangıç adedi merkez stoğuna kaydedilir.</p>
+              <fieldset class="permission-options"><legend>Etiketler · isteğe bağlı</legend>
                 <p class="muted">İsim ve değer gir veya daha önce kullanılan bir etiketi seç.</p>
                 <label>Önceki etiketler<select id="existingProductTag"><option value="">Etiket seç</option></select></label>
                 <div id="productTagRows" class="form-stack"></div>
                 <button id="addProductTag" type="button" class="secondary">Etiket ekle</button>
               </fieldset>
+              <details id="productExtraFields"><summary>Diğer bilgiler · isteğe bağlı</summary><label>Satış fiyatı<input id="productPrice" type="number" min="0" step="0.01"><span class="muted">Stok takibi için gerekli değil. Sipariş oluşturulmadan önce belirlenmelidir.</span></label></details>
               <button id="saveProduct" type="submit" class="primary">Ürünü kaydet</button>
             </form>
             <datalist id="tagNameSuggestions"></datalist>
@@ -454,6 +455,7 @@
             <header class="card-head"><h2 id="catalog-title">Ürün kataloğu</h2></header>
             <div class="catalog-tools">
               <label>Ürün ara<input id="productSearch" type="search" placeholder="İsim veya SKU"></label>
+              <label><input id="includeArchivedProducts" type="checkbox">Arşivlenen ürünleri de göster</label>
               <div class="tag-row"><label>Etiket<select id="filterTagName"><option value="">Etiket seç</option></select></label><label>Değer<select id="filterTagValue"><option value="">Değer seç</option></select></label><button id="addTagFilter" class="secondary" type="button">Filtre ekle</button></div>
               <div id="activeTagFilters" class="tag-list"></div><p id="catalogCount" class="muted"></p>
             </div>
@@ -740,6 +742,8 @@
     let tagSuggestions = [];
     let catalogFilters = [];
     let editingProductId = null;
+    let editingProductVersion = null;
+    let archivedProducts = [];
     let movementHistory = [];
     let movementRequest = 0;
     let loadedBranches = [];
@@ -1206,15 +1210,16 @@
       const body = $('productRows');
       body.replaceChildren();
       const search = $('productSearch').value.trim().toLocaleLowerCase('tr');
-      const filtered = products.filter(p => (!search || (p.name + ' ' + p.sku).toLocaleLowerCase('tr').includes(search))
+      const all = $('includeArchivedProducts').checked ? [...products,...archivedProducts] : products;
+      const filtered = all.filter(p => (!search || (p.name + ' ' + p.sku).toLocaleLowerCase('tr').includes(search))
         && catalogFilters.every(f => (p.tags || []).some(t => t.name === f.name && t.value === f.value)));
-      $('catalogCount').textContent = filtered.length + ' / ' + products.length + ' ürün';
+      $('catalogCount').textContent = filtered.length + ' / ' + all.length + ' ürün';
       if (!filtered.length) emptyRow(body, products.length ? 'Filtrelere uygun ürün yok.' : 'Henüz ürün yok.', 7);
       for (const product of filtered) {
         const row = document.createElement('tr');
         cell(row, product.id);
         cell(row, product.sku);
-        cell(row, product.name);
+        cell(row, product.name + (product.active ? '' : ' · Arşivde'));
         cell(row, product.price == null ? '—' : amounts.format(product.price), 'numeric');
         cell(row, numbers.format(product.quantity || 0), 'numeric');
         const tags = document.createElement('div');
@@ -1228,13 +1233,18 @@
         cell(row, tags.childNodes.length ? tags : 'Etiket yok');
         const actions = document.createElement('div');
         actions.className = 'actions';
-        if (can('PRODUCTS_EDIT')) {
+        if (can('PRODUCTS_EDIT') && product.active) {
           const edit = document.createElement('button');
           edit.type = 'button'; edit.className = 'secondary'; edit.textContent = 'Düzenle';
           edit.addEventListener('click', () => openProductEditor(product));
           actions.append(edit);
         }
-        if (can('PRODUCTS_DELETE')) {
+        if (!product.active && can('PRODUCTS_EDIT')) {
+          const restore=document.createElement('button');restore.type='button';restore.className='secondary';restore.textContent='Arşivden çıkar';
+          restore.addEventListener('click',()=>action(restore,async()=>{await api('/products/'+product.id+'/restore','POST');await refresh();notify('Ürün tekrar kullanıma açıldı.');}));
+          actions.append(restore);
+        }
+        if (can('PRODUCTS_DELETE') && product.active) {
           const remove = document.createElement('button');
           remove.type = 'button'; remove.className = 'secondary danger'; remove.textContent = 'Ürünü kaldır';
           remove.addEventListener('click', () => {
@@ -1270,14 +1280,20 @@
 
     function openProductEditor(product = null) {
       editingProductId = product?.id ?? null;
+      editingProductVersion = product?.version ?? null;
       $('productForm').reset(); $('productTagRows').replaceChildren();
       $('product-title').textContent = product ? 'Ürün ve etiketlerini düzenle' : 'Ürün ekle';
       $('product-editor-heading').textContent = $('product-title').textContent;
       $('initialStockField').hidden = !!product;
       $('initialStockQuantity').disabled = !!product;
+      $('initialStockQuantity').readOnly = !can('STOCK_MANAGE');
+      $('initialStockHint').hidden = !!product;
+      $('initialStockHint').textContent = can('STOCK_MANAGE') ? 'Şube açmak zorunda değilsin. Başlangıç adedi merkez stoğuna kaydedilir.'
+        : 'Ürün sıfır adetle açılır. Başlangıç stoğu girmek için ayrıca stok yönetimi yetkisi gerekir.';
+      $('productExtraFields').open = product?.price != null;
       if (product) {
         $('productName').value = product.name; $('productSku').value = product.sku;
-        $('productPrice').value = product.price;
+        $('productPrice').value = product.price ?? '';
         for (const tag of product.tags || []) addTagRow(tag);
       }
       $('productEditor').hidden = false;
@@ -1288,9 +1304,11 @@
 
     function closeProductEditor() {
       editingProductId = null;
+      editingProductVersion = null;
       $('productForm').reset(); $('productTagRows').replaceChildren();
       $('product-title').textContent = 'Ürün ekle'; $('product-editor-heading').textContent = 'Ürün ekle';
       $('initialStockField').hidden = false; $('initialStockQuantity').disabled = false;
+      $('initialStockHint').hidden = false;$('productExtraFields').open = false;
       if (location.hash === '#product-editor') location.hash = '#product-list';
     }
 
@@ -1639,6 +1657,8 @@
       renderOverviewDetail();
       renderOrders($('orderRows'), loadedOrders);
       catalogProducts = products;
+      archivedProducts = $('includeArchivedProducts').checked && can('PRODUCTS_VIEW')
+        ? (await api('/products?includeArchived=true')).filter(p=>!p.active) : [];
       renderTagSuggestions();
       renderProducts(products);
       if (isAdmin) {
@@ -1701,6 +1721,7 @@
       closeProductEditor();
       closeEmployeeProfile(); loadedBranches = []; editingBranch = null;
       catalogProducts = []; tagSuggestions = []; catalogFilters = []; movementHistory = []; movementRequest++;
+      archivedProducts=[];$('includeArchivedProducts').checked=false;
       $('productSearch').value = ''; $('activeTagFilters').replaceChildren(); $('movementRows').replaceChildren();
       $('movementEditor').hidden = true; $('movementForm').reset();
       $('additionalMovementItems').replaceChildren(); pendingInventoryOperation = null; movementProducts = []; operationTypes = [];
@@ -2080,9 +2101,10 @@
           name: row.querySelector('.tag-name').value.trim(), value: row.querySelector('.tag-value').value.trim()
         }));
         const request = { name: $('productName').value.trim(), sku: $('productSku').value.trim(),
-          price: Number($('productPrice').value), tags };
+          price: $('productPrice').value.trim() === '' ? null : Number($('productPrice').value), tags };
         const creating = editingProductId === null;
         if (creating) request.quantity = Number($('initialStockQuantity').value);
+        else request.version = editingProductVersion;
         await api(creating ? '/products' : '/products/' + editingProductId, creating ? 'POST' : 'PUT', request);
         closeProductEditor();
         notify(creating ? 'Ürün, etiketleri ve başlangıç adedi kaydedildi.' : 'Ürün ve etiketleri güncellendi.');
@@ -2101,6 +2123,7 @@
       $('existingProductTag').value = '';
     });
     $('productSearch').addEventListener('input', () => renderProducts());
+    $('includeArchivedProducts').addEventListener('change',()=>refresh().catch(error=>notify(error.message,true)));
     $('filterTagName').addEventListener('change', renderFilterValues);
     $('addTagFilter').addEventListener('click', () => {
       const filter = { name: $('filterTagName').value, value: $('filterTagValue').value };

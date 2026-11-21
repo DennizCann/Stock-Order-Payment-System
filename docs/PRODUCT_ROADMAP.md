@@ -2,6 +2,14 @@
 
 This document tracks the requested end state. A working demo is not evidence that a production requirement is complete.
 
+## Current session priority
+
+Finish the owner-first installation, flexible employee/permission, optional branch/warehouse, product/tag and stock workflows before expanding marketplace integrations. The owner must be able to start with no employees and no explicitly created branch. Basic product creation requires name, SKU and initial quantity; price is optional, and user-defined name/value tags remain reusable and editable. Existing data and history must survive these changes.
+
+### Product and stock architecture decision
+
+Product holds identity and descriptive data; each tag is a name/value child owned by its product. Physical balances remain separate stock records because one product can exist at the centre and multiple optional branches/warehouses, with different reservations and movement histories. The product's displayed total is a transactionally maintained summary of those physical balances, not a second independently editable stock amount. Creating a product with an initial quantity creates a centre-stock operation atomically. Later quantity changes go through authorized stock operations, not the metadata editor. Transfers preserve the total, and order reservations do not change physical totals. Metadata revision is separate from stock revision so a receipt does not invalidate an otherwise current name/tag edit.
+
 ## Required behavior
 
 - Owner signs in with an administrator account; production has no public or seeded administrator password.
@@ -64,3 +72,10 @@ Updates below must describe verified behavior and distinguish live-provider test
 
 - A queued publication is now revalidated before HTTP submission. If its saved barcode or quantity no longer matches current policy and available stock, it fails without contacting the provider. A fresh preview/publication is required rather than sending an outdated snapshot after downtime.
 - Verification: all eight channel-stock integration tests passed, including the new reservation-change and disabled-listing recovery case. The earlier full 107-test build remains the broad verification baseline; this correction adds one regression test and was checked with the affected integration suite.
+
+### Core session: simple product lifecycle
+
+- Basic product creation now accepts name, SKU and centre quantity without a price or explicit branch. Optional tags remain editable name/value children and reusable suggestions. Price is optional and appears under additional details; unpriced products cannot create orders.
+- Metadata updates require the displayed product revision; stock changes do not invalidate metadata edits. A stale metadata form cannot overwrite another user's changes. Quantity changes are explicitly rejected in the metadata update request.
+- Initial physical stock requires stock-management authority in addition to product-creation authority. Product-only creators can open zero-stock records. Archived products can be shown and restored without erasing tags, quantities or historical references.
+- Verification: all 115 tests passed. Seven new cases cover the minimal form, no implicit branch creation, stock permission separation, trim/price validation, stale edits, archive/restore, unpriced-order protection and concurrent stock/metadata changes. Actual browser checks covered the same form and restricted-user controls at 1440/900/390 pixels. Flyway through V19 applied with schema validation on an isolated database.

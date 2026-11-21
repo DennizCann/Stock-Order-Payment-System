@@ -64,6 +64,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/stock-movements")
                             .hasAnyAuthority("ROLE_ADMIN", "STOCK_MANAGE", "BRANCH_STOCK_MANAGE")
                         .requestMatchers(HttpMethod.POST, "/api/v1/products").hasAnyAuthority("ROLE_ADMIN", "PRODUCTS_CREATE")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/products/*/restore").hasAnyAuthority("ROLE_ADMIN", "PRODUCTS_EDIT")
                         .requestMatchers(HttpMethod.PUT, "/api/v1/products/*").hasAnyAuthority("ROLE_ADMIN", "PRODUCTS_EDIT")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/products/*").hasAnyAuthority("ROLE_ADMIN", "PRODUCTS_DELETE")
                         .requestMatchers(HttpMethod.POST, "/api/v1/products/*/stock", "/api/v1/products/*/stock/**")

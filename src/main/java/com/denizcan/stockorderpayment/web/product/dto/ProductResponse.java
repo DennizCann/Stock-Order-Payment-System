@@ -12,7 +12,8 @@ public record ProductResponse(
         BigDecimal price,
         long quantity,
         boolean active,
-        List<Tag> tags
+        List<Tag> tags,
+        long version
 ) {
 
     public record Tag(Long id, String name, String value) {}
@@ -25,7 +26,8 @@ public record ProductResponse(
                 product.getPrice(),
                 product.getQuantity(),
                 product.isActive(),
-                product.getTags().stream().map(t -> new Tag(t.getId(), t.getName(), t.getValue())).toList()
+                product.getTags().stream().map(t -> new Tag(t.getId(), t.getName(), t.getValue())).toList(),
+                product.getVersion()
         );
     }
 }

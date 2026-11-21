@@ -9,6 +9,9 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from Product p where p.id=:id")
+    Optional<Product> findForUpdate(@Param("id") Long id);
 
     boolean existsBySku(String sku);
     boolean existsBySkuAndIdNot(String sku, Long id);
@@ -18,7 +21,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     int adjustQuantity(@Param("id") Long id, @Param("delta") long delta);
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
-    @Query("update Product p set p.active = false where p.id = :id and p.active = true and p.quantity = 0")
+    @Query("update Product p set p.active = false, p.version = p.version + 1 where p.id = :id and p.active = true and p.quantity = 0")
     int archiveEmpty(@Param("id") Long id);
 
     @Query("select distinct t.name, t.value from Product p join p.tags t where p.active = true order by t.name, t.value")
