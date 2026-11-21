@@ -16,6 +16,7 @@ public class StockPublicationWorker {
     private final StockPublicationRepository publications;
     private final PlatformTransactionManager transactions;
     private final TrendyolStockGateway gateway;
+    private final ChannelStockService settings;
     private record Task(UUID id,boolean submit,String batch,List<TrendyolStockGateway.Item> items) {}
 
     @Scheduled(fixedDelayString="${app.trendyol.check-interval-ms:15000}",initialDelayString="${app.trendyol.check-interval-ms:15000}")
@@ -38,6 +39,18 @@ public class StockPublicationWorker {
             if(p.getState()==UNCERTAIN) return null;
             boolean submit=p.getState()==QUEUED;
             if(!submit&&p.getState()!=SUBMITTED) return null;
+            if(submit) {
+                var current=new HashMap<Long,ChannelStockService.Policy>();
+                settings.list().forEach(policy->current.put(policy.productId(),policy));
+                boolean changed=p.getLines().stream().anyMatch(line->{
+                    var policy=current.get(line.getProductId());
+                    return policy==null||!Objects.equals(policy.barcode(),line.getBarcode())||policy.publishable()!=line.getQuantity();
+                });
+                if(changed) {
+                    p.finish(FAILED,"Bekleyen gönderimden sonra stok veya ayarlar değişmiş. Güncel önizlemeyle yeni gönderim oluştur.");
+                    return null;
+                }
+            }
             if(!submit&&p.getCreatedAt().isBefore(Instant.now().minusSeconds(3*3600))) {
                 p.finish(UNCERTAIN,"Sonuç uzun süredir doğrulanamadı. Mağazadan kontrol gerekiyor.");return null;
             }

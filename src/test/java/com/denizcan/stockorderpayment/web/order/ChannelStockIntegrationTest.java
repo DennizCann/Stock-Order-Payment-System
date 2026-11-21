@@ -70,6 +70,15 @@ class ChannelStockIntegrationTest {
         doReturn(TrendyolStockGateway.Outcome.SUCCESS).when(gateway).check(anyString(),anyList());due(request);worker.process(request);
         assertThat(settings.get(request).state()).isEqualTo("SUCCESS");verify(gateway,times(1)).submit(anyList());
     }
+    @Test void recoveredQueueDoesNotPublishOutdatedStockOrDisabledListing() throws Exception {
+        long id=product(7);policy(id,UUID.randomUUID().toString(),7,0,true,null,200);
+        UUID queued=settings.enqueue(UUID.randomUUID(),"admin");
+        stock.reserve(id,3,"Order arrived while publisher was stopped");worker.process(queued);
+        assertThat(settings.get(queued).state()).isEqualTo("FAILED");verify(gateway,never()).submit(anyList());
+        UUID second=settings.enqueue(UUID.randomUUID(),"admin");
+        JsonNode p=policy(id);policy(id,p.path("barcode").asText(),7,0,false,p.path("version").asLong(),200);
+        worker.process(second);assertThat(settings.get(second).state()).isEqualTo("FAILED");verify(gateway,never()).submit(anyList());
+    }
     @Test void staleSendingClaimIsNotSubmittedAgainAfterProcessRecovery() throws Exception {
         long id=product(5);policy(id,UUID.randomUUID().toString(),2,0,true,null,200);UUID request=settings.enqueue(UUID.randomUUID(),"admin");
         new TransactionTemplate(transactions).executeWithoutResult(s->{var p=publications.lock(request).orElseThrow();p.sending();ReflectionTestUtils.setField(p,"lastCheckedAt",Instant.now().minusSeconds(100));});
