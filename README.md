@@ -7,7 +7,8 @@ A Java 21 and Spring Boot 3.4 web application for company product, stock, locati
 > Shipment/cargo simulation and payment completion are planned. See [the local demo guide](docs/DEMO.md).
 
 The company-product requirements, verified deliveries and remaining gaps are tracked in
-[the product roadmap](docs/PRODUCT_ROADMAP.md). Marketplace traffic currently uses local simulators;
+[the product roadmap](docs/PRODUCT_ROADMAP.md). By default marketplace traffic uses local simulators.
+An optional Trendyol quantity-publication adapter is contract-tested and disabled by default;
 this is not yet a completed live-marketplace integration or a production-ready release.
 
 ## Current status
@@ -17,10 +18,10 @@ this is not yet a completed live-marketplace integration or a production-ready r
 | Authentication and employees | Implemented | Invitations, configurable roles, personal permission exceptions, editable profiles/status, account-bound revocable JWT sessions |
 | Branches and warehouses | Implemented | Delegated viewing/management, type/name editing, archive/restore safeguards |
 | Product | Implemented | Create, edit, archive, name/value tags, filtering and consistent total quantity |
-| Stock | Done | Create, query, adjust, stock-in, and stock-out |
+| Stock | Implemented | Single/batch receipts and issues, atomic internal transfers, configurable movement names |
 | Inventory history | Done | Traceable transaction log per product |
-| Order | Done for initial flow | Authenticated create/read, owner isolation, concurrent stock reservations |
-| Channel integration | Demo implemented | SKU-based import, duplicate detection, versioned stock snapshots, manual synchronization |
+| Order | Initial lifecycle implemented | Authenticated create/read, owner isolation, reservations, local shipment/cancellation and audit |
+| Channel integration | Partial | Demo import/sync; configurable caps and durable Trendyol quantity publication; real order import not implemented |
 | Operations panel | Implemented for current workflows | Five landing sections with separate task screens and permission-aware navigation |
 | External simulators | Demo implemented | Separate Trendyol, Hepsiburada, n11, webstore and branch processes |
 | Cargo | Planned | Separate carrier simulator, shipment creation and tracking |
@@ -47,31 +48,36 @@ this is not yet a completed live-marketplace integration or a production-ready r
 
 ### Products
 
-| Method | Endpoint | Roles |
+| Method | Endpoint | Permission (administrator also allowed) |
 |---|---|---|
-| `POST` | `/api/v1/products` | `ADMIN` |
-| `GET` | `/api/v1/products` | `USER`, `ADMIN` |
-| `GET` | `/api/v1/products/{id}` | `USER`, `ADMIN` |
+| `POST` | `/api/v1/products` | `PRODUCTS_CREATE` |
+| `GET` | `/api/v1/products` | `PRODUCTS_VIEW` or `STOCK_VIEW` |
+| `GET` | `/api/v1/products/{id}` | `PRODUCTS_VIEW` or `STOCK_VIEW` |
+| `PUT` | `/api/v1/products/{id}` | `PRODUCTS_EDIT` |
+| `DELETE` | `/api/v1/products/{id}` | `PRODUCTS_DELETE`; archive empty product |
 
 ### Stock and inventory
 
-| Method | Endpoint | Roles |
+| Method | Endpoint | Permission (administrator also allowed) |
 |---|---|---|
-| `POST` | `/api/v1/products/{productId}/stock` | `ADMIN` |
-| `GET` | `/api/v1/products/{productId}/stock` | `USER`, `ADMIN` |
-| `PATCH` | `/api/v1/products/{productId}/stock` | `ADMIN` |
-| `POST` | `/api/v1/products/{productId}/stock/in` | `ADMIN` |
-| `POST` | `/api/v1/products/{productId}/stock/out` | `ADMIN` |
-| `GET` | `/api/v1/products/{productId}/inventory-transactions` | `USER`, `ADMIN` |
+| `POST` | `/api/v1/products/{productId}/stock` | `STOCK_MANAGE` |
+| `GET` | `/api/v1/products/{productId}/stock` | `STOCK_VIEW` |
+| `PATCH` | `/api/v1/products/{productId}/stock` | `STOCK_MANAGE` |
+| `POST` | `/api/v1/products/{productId}/stock/in` | `STOCK_MANAGE` |
+| `POST` | `/api/v1/products/{productId}/stock/out` | `STOCK_MANAGE` |
+| `GET` | `/api/v1/products/{productId}/inventory-transactions` | `STOCK_VIEW` |
+| `POST` | `/api/v1/inventory-operations` | `STOCK_MANAGE`, own `BRANCH_STOCK_MANAGE`, or `STOCK_TRANSFER`, depending on kind/location |
 
 ### Orders and operations
 
 | Method | Endpoint | Access |
 |---|---|---|
-| POST | `/api/v1/orders` | USER, ADMIN; identity is taken from authentication |
-| GET | `/api/v1/orders` | Own orders |
-| GET | `/api/v1/orders/{id}` | Own order |
-| GET | `/api/v1/operations/orders` | ADMIN; all channels |
+| POST | `/api/v1/orders` | `ORDERS_CREATE` or ADMIN; identity is taken from authentication |
+| GET | `/api/v1/orders` | `ORDERS_VIEW` or ADMIN; own orders |
+| GET | `/api/v1/orders/{id}` | `ORDERS_VIEW` or ADMIN; own order |
+| GET | `/api/v1/operations/orders` | `OPERATIONS_ORDERS_VIEW` or ADMIN; all channels |
+| PUT | `/api/v1/operations/orders/{id}/state` | `OPERATIONS_ORDERS_MANAGE` or ADMIN; local shipment/cancellation |
+| GET | `/api/v1/operations/orders/{id}/history` | `OPERATIONS_ORDERS_VIEW` or ADMIN |
 | POST | `/api/v1/operations/channels/{source}/orders` | ADMIN; idempotent import by source and external id |
 | POST | `/api/v1/operations/channels/import` | ADMIN; import pending orders over HTTP |
 | POST | `/api/v1/operations/channels/sync-stock` | ADMIN; send versioned stock snapshots |
@@ -79,7 +85,8 @@ this is not yet a completed live-marketplace integration or a production-ready r
 Public order requests contain `items` with `productId` and `quantity`; user ids are
 not accepted as an ownership authority. Channel requests contain `externalOrderId`
 and items with `sku` and `quantity`. Current external line prices use the central
-catalog. External provider-specific adapters are outside the demo's current scope.
+catalog. The real Trendyol adapter currently publishes quantities only; provider order
+import, price reconciliation and provider-side order status updates remain incomplete.
 
 ## Tech stack
 
@@ -184,6 +191,7 @@ Progress details: [TICKETS.md](TICKETS.md)
 
 Current company-product progress: [PRODUCT_ROADMAP.md](docs/PRODUCT_ROADMAP.md).
 First real-provider stock adapter setup and limits: [TRENDYOL_STOCK.md](docs/TRENDYOL_STOCK.md).
+Deployment preparation and recovery: [COMPANY_RUNBOOK.md](docs/COMPANY_RUNBOOK.md).
 
 ## Demo credentials
 

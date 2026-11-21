@@ -45,6 +45,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/roles/**", "/api/v1/roles").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET,"/api/v1/channel-stock/**").hasAnyAuthority("ROLE_ADMIN","CHANNELS_VIEW")
                         .requestMatchers("/api/v1/channel-stock/**").hasAnyAuthority("ROLE_ADMIN","CHANNELS_MANAGE")
+                        .requestMatchers(HttpMethod.GET,"/api/v1/operations/orders","/api/v1/operations/orders/*/history").hasAnyAuthority("ROLE_ADMIN","OPERATIONS_ORDERS_VIEW")
+                        .requestMatchers(HttpMethod.PUT,"/api/v1/operations/orders/*/state").hasAnyAuthority("ROLE_ADMIN","OPERATIONS_ORDERS_MANAGE")
                         .requestMatchers(HttpMethod.GET, "/api/v1/branches/me/stock").hasAuthority("BRANCH_STOCK_VIEW")
                         .requestMatchers(HttpMethod.POST, "/api/v1/branches/me/sales").hasAuthority("BRANCH_SALE_CREATE")
                         .requestMatchers("/api/v1/branches/me/**").denyAll()

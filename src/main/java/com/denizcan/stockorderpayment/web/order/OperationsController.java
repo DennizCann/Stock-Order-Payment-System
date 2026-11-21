@@ -34,6 +34,7 @@ public class OperationsController {
     }
 
     @GetMapping("/orders")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','OPERATIONS_ORDERS_VIEW')")
     public List<OrderResponse> list() { return orders.findAllForOperations(); }
 
     @PostMapping("/channels/{source}/orders")

@@ -20,7 +20,9 @@ public enum Permission {
     STOCK_TRANSFER("Merkez, şube ve depolar arasında stok aktar", Role.USER),
     STOCK_TYPES_MANAGE("Stok hareket adlarını tanımla ve düzenle", Role.USER),
     CHANNELS_VIEW("Kanal stok ayarlarını ve gönderimlerini görüntüle", Role.USER),
-    CHANNELS_MANAGE("Kanal stok sınırlarını düzenle ve mağazaya gönder", Role.USER);
+    CHANNELS_MANAGE("Kanal stok sınırlarını düzenle ve mağazaya gönder", Role.USER),
+    OPERATIONS_ORDERS_VIEW("Tüm kanal siparişlerini ve işlem geçmişini görüntüle", Role.USER),
+    OPERATIONS_ORDERS_MANAGE("Kanal siparişlerinin sevk ve iptal stok işlemlerini yönet", Role.USER);
 
     private final String label;
     private final Role scope;
@@ -71,6 +73,7 @@ public enum Permission {
         if (!effective.contains(BRANCH_STOCK_VIEW)) effective.remove(BRANCH_STOCK_MANAGE);
         if (!effective.contains(BRANCHES_VIEW)) effective.remove(BRANCHES_MANAGE);
         if (!effective.contains(CHANNELS_VIEW)) effective.remove(CHANNELS_MANAGE);
+        if (!effective.contains(OPERATIONS_ORDERS_VIEW)) effective.remove(OPERATIONS_ORDERS_MANAGE);
         return effective;
     }
 
@@ -82,6 +85,7 @@ public enum Permission {
                 && (!selected.contains(STOCK_TYPES_MANAGE) || selected.contains(STOCK_VIEW))
                 && (!selected.contains(BRANCHES_MANAGE) || selected.contains(BRANCHES_VIEW))
                 && (!selected.contains(CHANNELS_MANAGE) || selected.contains(CHANNELS_VIEW))
+                && (!selected.contains(OPERATIONS_ORDERS_MANAGE) || selected.contains(OPERATIONS_ORDERS_VIEW))
                 && (java.util.Collections.disjoint(selected, EnumSet.of(PRODUCTS_CREATE, PRODUCTS_EDIT, PRODUCTS_DELETE)) || selected.contains(PRODUCTS_VIEW));
     }
 }

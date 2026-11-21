@@ -333,6 +333,7 @@
               </table>
             </div>
           </section>
+          <section class="card section" id="orderHistory" hidden><header class="card-head"><h2 id="orderHistoryTitle">Sipariş geçmişi</h2><button class="secondary" id="closeOrderHistory" type="button">Kapat</button></header><p class="muted" style="padding:0 24px">Bu işlemler merkezdeki stok ve sipariş kaydını günceller. Pazaryerindeki sevk veya iptal işlemini ayrıca kendi panelinden yapmalısın.</p><div id="orderHistoryRows" style="padding:0 24px 24px"></div></section>
         </section>
 
         <section id="channel-stock" data-view data-parent="channels" hidden aria-labelledby="channel-stock-title">
@@ -700,7 +701,7 @@
     ]);
     $('accounts').querySelector('.muted').textContent = 'Çalışanlar, roller ve yetkiler için yapmak istediğin işlemi seç.';
     const channels = { INTERNAL: 'Merkez', TRENDYOL: 'Trendyol', HEPSIBURADA: 'Hepsiburada', N11: 'n11', WEBSTORE: 'Web mağazası', BRANCH: 'Şube' };
-    const statuses = { CREATED: 'Oluşturuldu', PAID: 'Ödendi', CANCELLED: 'İptal edildi', PAYMENT_FAILED: 'Ödeme başarısız' };
+    const statuses = { CREATED: 'Oluşturuldu', PAID: 'Ödendi', SHIPPED: 'Sevk edildi', CANCELLED: 'İptal edildi', PAYMENT_FAILED: 'Ödeme başarısız' };
     const movementTypes = {
       INITIAL: 'İlk stok', STOCK_IN: 'Stok girişi', STOCK_OUT: 'Stok çıkışı',
       ADJUSTMENT: 'Stok düzeltmesi', RESERVATION: 'Stok ayırma',
@@ -760,7 +761,7 @@
       if (view.id === 'branches' || view.dataset.parent === 'branches')
         return can(view.id === 'branch-create' ? 'BRANCHES_MANAGE' : 'BRANCHES_VIEW');
       if (view.hasAttribute('data-admin-view')) return isAdmin;
-      if (view.id === 'channels') return isAdmin || !isBranchEmployee && (can('ORDERS_VIEW') || can('CHANNELS_VIEW'));
+      if (view.id === 'channels') return isAdmin || !isBranchEmployee && (can('ORDERS_VIEW') || can('CHANNELS_VIEW') || can('OPERATIONS_ORDERS_VIEW'));
       if (view.id === 'channel-stock') return can('CHANNELS_VIEW');
       if (view.id === 'products') return can('PRODUCTS_VIEW') || can('STOCK_VIEW') || can('BRANCH_STOCK_VIEW');
       if (view.id === 'product-editor') return can('PRODUCTS_CREATE') || can('PRODUCTS_EDIT');
@@ -771,7 +772,7 @@
       if (isBranchEmployee) return false;
       switch (view.id) {
         case 'overview': return can('STOCK_VIEW') && can('ORDERS_VIEW');
-        case 'orders': return can('ORDERS_VIEW');
+        case 'orders': return can('ORDERS_VIEW') || can('OPERATIONS_ORDERS_VIEW');
         case 'product-list': return can('PRODUCTS_VIEW');
         case 'inventory': return can('STOCK_VIEW');
         case 'channels': return isAdmin;
@@ -788,7 +789,7 @@
     function synchronizePermissionChoices(body, input) {
       const prerequisite = { BRANCH_SALE_CREATE: 'BRANCH_STOCK_VIEW', BRANCH_STOCK_MANAGE: 'BRANCH_STOCK_VIEW',
         BRANCHES_MANAGE: 'BRANCHES_VIEW', ORDERS_CREATE: 'ORDERS_VIEW', STOCK_MANAGE: 'STOCK_VIEW',
-        STOCK_TRANSFER: 'STOCK_VIEW', STOCK_TYPES_MANAGE: 'STOCK_VIEW', CHANNELS_MANAGE: 'CHANNELS_VIEW',
+        STOCK_TRANSFER: 'STOCK_VIEW', STOCK_TYPES_MANAGE: 'STOCK_VIEW', CHANNELS_MANAGE: 'CHANNELS_VIEW', OPERATIONS_ORDERS_MANAGE: 'OPERATIONS_ORDERS_VIEW',
         PRODUCTS_CREATE: 'PRODUCTS_VIEW', PRODUCTS_EDIT: 'PRODUCTS_VIEW', PRODUCTS_DELETE: 'PRODUCTS_VIEW' };
       if (input.checked && prerequisite[input.value]) {
         const required = body.querySelector('input[value="' + prerequisite[input.value] + '"]');
@@ -1088,7 +1089,24 @@
         badge.textContent = statuses[order.status] || order.status || '—';
         cell(row, '#' + order.id);
         cell(row, channels[order.source] || order.source);
-        cell(row, badge);
+        const statusCell = cell(row, badge);
+        if (body.id === 'orderRows' && can('OPERATIONS_ORDERS_VIEW')) {
+          const buttons = document.createElement('div');buttons.className='actions';
+          const history = document.createElement('button');history.type='button';history.className='secondary';history.textContent='Geçmiş';
+          history.addEventListener('click', () => action(history, () => showOrderHistory(order.id)));buttons.append(history);
+          if (can('OPERATIONS_ORDERS_MANAGE') && ['CREATED','PAID'].includes(order.status)) {
+            for (const [status, title] of [['SHIPPED','Sevk et'],['CANCELLED','İptal et']]) {
+              const button=document.createElement('button');button.type='button';button.className='secondary';button.textContent=title;
+              button.addEventListener('click', () => action(button, async () => {
+                const warning=status==='SHIPPED' ? 'Ayrılan ürünler merkez stoğundan düşülecek.' : 'Ayrılan stok yeniden satılabilir olacak.';
+                if (!confirm('Sipariş #' + order.id + ': ' + warning + ' Bu işlem pazaryerindeki kaydı değiştirmez. Devam edilsin mi?')) return;
+                await api('/operations/orders/' + order.id + '/state','PUT',{expectedStatus:order.status,status});
+                await refresh();await showOrderHistory(order.id);notify('Siparişin stok işlemi kaydedildi.');
+              }));buttons.append(button);
+            }
+          }
+          statusCell.append(buttons);
+        }
         cell(row, order.totalAmount == null ? '—' : amounts.format(order.totalAmount), 'numeric');
         const date = new Date(order.createdAt);
         cell(row, order.createdAt && !Number.isNaN(date.getTime()) ? dates.format(date) : '—');
@@ -1568,10 +1586,10 @@
     }
 
     async function refresh() {
-      const ordersPath = isAdmin ? '/operations/orders' : '/orders';
+      const ordersPath = can('OPERATIONS_ORDERS_VIEW') ? '/operations/orders' : '/orders';
       const [products, loadedOrders] = await Promise.all([
         can('PRODUCTS_VIEW') || can('STOCK_VIEW') ? api('/products') : [],
-        can('ORDERS_VIEW') ? api(ordersPath) : []
+        can('ORDERS_VIEW') || can('OPERATIONS_ORDERS_VIEW') ? api(ordersPath) : []
       ]);
       const stockRows = [];
       if (can('STOCK_VIEW')) {
@@ -1663,7 +1681,7 @@
         document.querySelectorAll('[data-branch-only]').forEach(element => { element.hidden = !isBranchEmployee; });
         $('branchSaleForm').closest('section').hidden = !can('BRANCH_SALE_CREATE');
         $('assignedBranch').textContent = login.branchName || '';
-        $('all-orders-description').textContent = isAdmin
+        $('all-orders-description').textContent = can('OPERATIONS_ORDERS_VIEW')
           ? 'Tüm satış kanallarından merkeze kaydedilen siparişler.' : 'Hesabına ait siparişler.';
         $('password').value = '';
         $('signedInUser').textContent = username + (login.roleName && login.roleName !== login.role ? ' · ' + login.roleName : '');
@@ -1688,6 +1706,7 @@
       $('additionalMovementItems').replaceChildren(); pendingInventoryOperation = null; movementProducts = []; operationTypes = [];
       resetOperationTypeForm();
       channelPolicies = []; channelConnection = null; pendingPublicationId = null;
+      $('orderHistory').hidden=true;$('orderHistoryRows').replaceChildren();
       $('channelPolicyForm').reset(); $('channelPolicyList').replaceChildren(); $('channelPublicationList').replaceChildren();
       resetRoleForm();
       closeEmployeeEditor();
@@ -1930,6 +1949,19 @@
       }, failure => { error.textContent = failure.message; });
     });
     readActivationLink();
+
+    async function showOrderHistory(id) {
+      const session=token;const changes=await api('/operations/orders/' + id + '/history');if (session!==token) return;
+      $('orderHistoryTitle').textContent='Sipariş #' + id + ' · İşlem geçmişi';$('orderHistoryRows').replaceChildren();
+      for (const change of changes) {
+        const p=document.createElement('p');p.textContent=dates.format(new Date(change.createdAt)) + ' · ' + change.username
+          + ' · ' + (statuses[change.previousStatus] || change.previousStatus) + ' → ' + (statuses[change.newStatus] || change.newStatus)
+          + (change.note ? ' · ' + change.note : '');$('orderHistoryRows').append(p);
+      }
+      if (!changes.length) $('orderHistoryRows').textContent='Henüz sevk veya iptal işlemi kaydedilmedi.';
+      $('orderHistory').hidden=false;
+    }
+    $('closeOrderHistory').addEventListener('click', () => {$('orderHistory').hidden=true;});
 
     function selectedChannelPolicy() {
       return channelPolicies.find(p => p.productId === Number($('channelPolicyProduct').value));
