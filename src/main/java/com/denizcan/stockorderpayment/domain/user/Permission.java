@@ -16,7 +16,9 @@ public enum Permission {
     STOCK_MANAGE("Merkez ve şubelerde stok hareketi oluştur", Role.USER),
     BRANCH_STOCK_MANAGE("Kendi şubesinde stok giriş/çıkışı oluştur", Role.BRANCH_EMPLOYEE),
     BRANCHES_VIEW("Şubeleri ve depoları görüntüle", Role.USER),
-    BRANCHES_MANAGE("Şube ve depo ekle, düzenle, arşivle", Role.USER);
+    BRANCHES_MANAGE("Şube ve depo ekle, düzenle, arşivle", Role.USER),
+    STOCK_TRANSFER("Merkez, şube ve depolar arasında stok aktar", Role.USER),
+    STOCK_TYPES_MANAGE("Stok hareket adlarını tanımla ve düzenle", Role.USER);
 
     private final String label;
     private final Role scope;
@@ -63,6 +65,7 @@ public enum Permission {
         if (!effective.contains(ORDERS_VIEW)) effective.remove(ORDERS_CREATE);
         if (!effective.contains(PRODUCTS_VIEW)) effective.removeAll(EnumSet.of(PRODUCTS_CREATE, PRODUCTS_EDIT, PRODUCTS_DELETE));
         if (!effective.contains(STOCK_VIEW)) effective.remove(STOCK_MANAGE);
+        if (!effective.contains(STOCK_VIEW)) effective.removeAll(EnumSet.of(STOCK_TRANSFER, STOCK_TYPES_MANAGE));
         if (!effective.contains(BRANCH_STOCK_VIEW)) effective.remove(BRANCH_STOCK_MANAGE);
         if (!effective.contains(BRANCHES_VIEW)) effective.remove(BRANCHES_MANAGE);
         return effective;
@@ -72,6 +75,8 @@ public enum Permission {
         return (!selected.contains(BRANCH_SALE_CREATE) && !selected.contains(BRANCH_STOCK_MANAGE) || selected.contains(BRANCH_STOCK_VIEW))
                 && (!selected.contains(ORDERS_CREATE) || selected.contains(ORDERS_VIEW))
                 && (!selected.contains(STOCK_MANAGE) || selected.contains(STOCK_VIEW))
+                && (!selected.contains(STOCK_TRANSFER) || selected.contains(STOCK_VIEW))
+                && (!selected.contains(STOCK_TYPES_MANAGE) || selected.contains(STOCK_VIEW))
                 && (!selected.contains(BRANCHES_MANAGE) || selected.contains(BRANCHES_VIEW))
                 && (java.util.Collections.disjoint(selected, EnumSet.of(PRODUCTS_CREATE, PRODUCTS_EDIT, PRODUCTS_DELETE)) || selected.contains(PRODUCTS_VIEW));
     }

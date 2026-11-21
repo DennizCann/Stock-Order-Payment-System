@@ -52,6 +52,8 @@ public class BranchStockMovement {
 
     @Column(length = 255)
     private String note;
+    @Column(name = "operation_id") private UUID operationId;
+    public void setOperationId(UUID operationId) { this.operationId = operationId; }
 
     public void describe(String reason, String note) {
         this.reason = reason;

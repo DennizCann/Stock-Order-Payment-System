@@ -388,7 +388,7 @@
               </table>
             </div>
           </section>
-          <section class="card section" data-admin-only hidden aria-labelledby="branch-movements-title">
+          <section class="card section" hidden aria-labelledby="branch-movements-title">
             <header class="card-head"><h2 id="branch-movements-title">Son şube stok hareketleri</h2></header>
             <div class="table-wrap" role="region" aria-label="Şube stok hareketleri" tabindex="0">
               <table>
@@ -451,22 +451,38 @@
           <section id="movementEditor" class="card account-form" aria-labelledby="movement-form-title" hidden>
             <header class="card-head"><h2 id="movement-form-title">Stok hareketi oluştur</h2></header>
             <form id="movementForm" class="form-stack">
-              <label>Stok yeri<select id="movementLocation" required></select></label>
+              <label>Temel hareket türü<select id="movementDirection" required><option value="IN">Giriş</option><option value="OUT">Çıkış</option><option value="TRANSFER">Yerler arası aktarım</option></select></label>
+              <label id="movementLocationLabel">Hedef stok yeri<select id="movementLocation" required></select></label>
+              <label id="movementTargetField" hidden>Hedef stok yeri<select id="movementTargetLocation"></select></label>
+              <label>Tanımlı hareket adı · isteğe bağlı<select id="movementType"><option value="">Özel ad kullan</option></select></label>
               <label>Ürün<select id="movementProduct" required></select></label>
-              <label>Hareket yönü<select id="movementDirection" required><option value="IN">Giriş</option><option value="OUT">Çıkış</option></select></label>
               <label>Adet<input id="movementQuantity" type="number" min="1" max="2147483647" required></label>
+              <div id="additionalMovementItems" class="form-stack"></div>
+              <button id="addMovementItem" class="secondary" type="button">Başka ürün ekle</button>
               <label>İşlem nedeni · isteğe bağlı<input id="movementReason" list="movementReasons" maxlength="100" placeholder="Satış, mal kabulü, iade…"></label>
               <datalist id="movementReasons"><option value="Satış"></option><option value="Mal kabulü"></option><option value="İade"></option><option value="Sayım düzeltmesi"></option></datalist>
               <label>Açıklama · isteğe bağlı<input id="movementNote" maxlength="255"></label>
-              <p class="muted">Tarih ve işlemi yapan kişi otomatik kaydedilir.</p>
+              <p class="muted">Tarih ve işlemi yapan kişi otomatik kaydedilir. Tüm ürünler tek işlemde kaydedilir; aktarım toplam stok adedini değiştirmez.</p>
               <button class="primary" type="submit">Hareketi kaydet</button>
             </form>
           </section>
           <section class="card section" aria-labelledby="movement-history-title">
             <header class="card-head"><h2 id="movement-history-title">Son 100 stok hareketi</h2></header>
-            <div class="movement-filters"><label>Stok yeri<select id="historyLocation"><option value="">Tümü</option></select></label><label>Yön<select id="historyDirection"><option value="">Tümü</option><option value="IN">Giriş</option><option value="OUT">Çıkış</option></select></label></div>
+            <div class="movement-filters"><label>Stok yeri<select id="historyLocation"><option value="">Tümü</option></select></label><label>Yön<select id="historyDirection"><option value="">Tümü</option><option value="IN">Giriş</option><option value="OUT">Çıkış</option><option value="TRANSFER">Aktarım</option></select></label></div>
             <div class="table-wrap"><table><thead><tr><th>Zaman</th><th>Stok yeri</th><th>Ürün</th><th>Yön</th><th class="numeric">Adet</th><th class="numeric">Kalan</th><th>Neden / Açıklama</th><th>Çalışan</th></tr></thead><tbody id="movementRows"></tbody></table></div>
           </section>
+        </section>
+        <section id="operation-types" data-view data-parent="products" hidden aria-labelledby="operation-types-title">
+          <a class="section-back" href="#products">← Ürünler</a>
+          <div class="hero"><div><h1 id="operation-types-title">Stok hareket adları</h1><p class="muted">İşletmene uygun adlar tanımla; her ad giriş, çıkış veya aktarım türüne bağlıdır.</p></div></div>
+          <section class="card account-form"><header class="card-head"><h2 id="operation-type-form-title">Hareket adı ekle</h2></header>
+            <form id="operationTypeForm" class="form-stack">
+              <label>Ad<input id="operationTypeName" maxlength="100" required placeholder="Mal kabulü, müşteriye satış, şubeye sevk…"></label>
+              <label>Temel tür<select id="operationTypeKind"><option value="IN">Giriş</option><option value="OUT">Çıkış</option><option value="TRANSFER">Aktarım</option></select></label>
+              <div class="actions"><button class="primary" type="submit">Kaydet</button><button id="cancelOperationTypeEdit" class="secondary" type="button" hidden>Vazgeç</button></div>
+            </form>
+          </section>
+          <section class="card section"><header class="card-head"><h2>Tanımlı hareket adları</h2></header><div class="table-wrap"><table><thead><tr><th>Ad</th><th>Tür</th><th>Durum</th><th>İşlem</th></tr></thead><tbody id="operationTypeRows"></tbody></table></div></section>
         </section>
         <section id="branches" data-view data-admin-view hidden aria-labelledby="branches-title">
           <div class="hero"><div><h1 id="branches-title">Şubeler</h1></div></div>
@@ -650,7 +666,8 @@
       { target: 'inventory', title: 'Stokları görüntüle', description: 'Toplam adedi, merkez ve şube stoklarını incele.' },
       { target: 'branch-workspace', title: 'Şube stoğum', description: 'Kendi şubenin stoğunu görüntüle ve yetkin varsa satış kaydet.' },
       { target: 'movement-create', title: 'Stok hareketi oluştur', description: 'Merkez veya şuben için stok girişi ya da çıkışı kaydet.' },
-      { target: 'movements', title: 'Stok hareketleri', description: 'Geçmiş giriş ve çıkışları, zamanı ve işlemi yapan kişiyi incele.' }
+      { target: 'movements', title: 'Stok hareketleri', description: 'Geçmiş giriş, çıkış ve aktarımları, zamanı ve işlemi yapan kişiyi incele.' },
+      { target: 'operation-types', title: 'Hareket adlarını yönet', description: 'Kendi hareket adlarını giriş, çıkış veya aktarım türüyle tanımla.' }
     ]);
     setSectionMenu('branches', [
       { target: 'branch-create', title: 'Şube / depo ekle', description: 'Yeni şubeni veya deponu sisteme tanımla.', permission: 'BRANCHES_MANAGE' },
@@ -707,6 +724,10 @@
     let loadedBranches = [];
     let editingBranch = null;
     let editingProfile = null;
+    let movementProducts = [];
+    let operationTypes = [];
+    let editingOperationType = null;
+    let pendingInventoryOperation = null;
 
     function can(permission) {
       return isAdmin || permissions.has(permission);
@@ -719,7 +740,8 @@
       if (view.id === 'channels') return isAdmin || !isBranchEmployee && can('ORDERS_VIEW');
       if (view.id === 'products') return can('PRODUCTS_VIEW') || can('STOCK_VIEW') || can('BRANCH_STOCK_VIEW');
       if (view.id === 'product-editor') return can('PRODUCTS_CREATE') || can('PRODUCTS_EDIT');
-      if (view.id === 'movement-create') return can('STOCK_MANAGE') || can('BRANCH_STOCK_MANAGE');
+      if (view.id === 'movement-create') return can('STOCK_MANAGE') || can('BRANCH_STOCK_MANAGE') || can('STOCK_TRANSFER');
+      if (view.id === 'operation-types') return can('STOCK_TYPES_MANAGE');
       if (view.id === 'movements') return can('STOCK_VIEW') || can('BRANCH_STOCK_VIEW');
       if (view.hasAttribute('data-branch-view')) return isBranchEmployee && can('BRANCH_STOCK_VIEW');
       if (isBranchEmployee) return false;
@@ -742,6 +764,7 @@
     function synchronizePermissionChoices(body, input) {
       const prerequisite = { BRANCH_SALE_CREATE: 'BRANCH_STOCK_VIEW', BRANCH_STOCK_MANAGE: 'BRANCH_STOCK_VIEW',
         BRANCHES_MANAGE: 'BRANCHES_VIEW', ORDERS_CREATE: 'ORDERS_VIEW', STOCK_MANAGE: 'STOCK_VIEW',
+        STOCK_TRANSFER: 'STOCK_VIEW', STOCK_TYPES_MANAGE: 'STOCK_VIEW',
         PRODUCTS_CREATE: 'PRODUCTS_VIEW', PRODUCTS_EDIT: 'PRODUCTS_VIEW', PRODUCTS_DELETE: 'PRODUCTS_VIEW' };
       if (input.checked && prerequisite[input.value]) {
         const required = body.querySelector('input[value="' + prerequisite[input.value] + '"]');
@@ -961,6 +984,7 @@
         });
       }
       if (view.id === 'movements' || view.id === 'movement-create') refreshMovements().catch(error => notify(error.message, true));
+      if (view.id === 'operation-types') refreshOperationTypes().catch(error => notify(error.message, true));
     }
 
     function readActivationLink() {
@@ -1266,39 +1290,119 @@
     async function refreshMovements() {
       if (!can('STOCK_VIEW') && !can('BRANCH_STOCK_VIEW')) return;
       const session = token; const request = ++movementRequest;
-      const [history, locations, products] = await Promise.all([
-        api('/stock-movements'), api('/stock-movements/locations'), api('/stock-movements/products')
+      const [history, operations, locations, products, types] = await Promise.all([
+        api('/stock-movements'), api('/inventory-operations'), api('/stock-movements/locations'), api('/stock-movements/products'), api('/inventory-operation-types')
       ]);
       if (token !== session || request !== movementRequest) return;
-      movementHistory = history;
+      const groups = history.map(m => ({ createdAt: m.createdAt, rows: [m] }));
+      for (const operation of operations) {
+        groups.push({ createdAt: operation.createdAt, rows: operation.lines.map(line => ({
+          createdAt: operation.createdAt, username: operation.username, productName: line.productName, sku: line.sku,
+          direction: operation.kind, quantity: line.quantity, reason: operation.label, note: operation.note,
+          locationName: operation.kind === 'TRANSFER' ? operation.sourceName + ' → ' + operation.targetName
+            : operation.kind === 'IN' ? operation.targetName : operation.sourceName,
+          locationKeys: operation.kind === 'TRANSFER' ? [operation.sourceBranchId, operation.targetBranchId].map(id => id == null ? 'central' : String(id))
+            : [(operation.kind === 'IN' ? operation.targetBranchId : operation.sourceBranchId) == null ? 'central'
+              : String(operation.kind === 'IN' ? operation.targetBranchId : operation.sourceBranchId)],
+          remaining: operation.kind === 'TRANSFER'
+            ? [line.sourceRemaining == null ? '' : 'Kaynak: ' + numbers.format(line.sourceRemaining), line.targetRemaining == null ? '' : 'Hedef: ' + numbers.format(line.targetRemaining)].filter(Boolean).join(' · ')
+            : numbers.format(operation.kind === 'IN' ? line.targetRemaining : line.sourceRemaining)
+        })) });
+      }
+      movementHistory = groups.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)).slice(0, 100).flatMap(g => g.rows);
+      movementProducts = products; operationTypes = types;
       const selected = $('movementLocation').value;
+      const selectedTarget = $('movementTargetLocation').value, historySelection = $('historyLocation').value;
       $('movementLocation').replaceChildren(new Option('Stok yeri seç', ''));
+      $('movementTargetLocation').replaceChildren(new Option('Hedef seç', ''));
       $('historyLocation').replaceChildren(new Option('Tümü', ''));
       for (const location of locations) {
         const value = location.branchId == null ? 'central' : String(location.branchId);
         $('movementLocation').add(new Option(location.name, value));
+        $('movementTargetLocation').add(new Option(location.name, value));
         $('historyLocation').add(new Option(location.name, value));
       }
       if ([...$('movementLocation').options].some(o => o.value === selected)) $('movementLocation').value = selected;
+      if ([...$('movementTargetLocation').options].some(o => o.value === selectedTarget)) $('movementTargetLocation').value = selectedTarget;
+      if ([...$('historyLocation').options].some(o => o.value === historySelection)) $('historyLocation').value = historySelection;
       if (locations.length === 1) $('movementLocation').selectedIndex = 1;
       setOptions('movementProduct', 'Ürün seç', products, p => p.name + ' · ' + p.sku);
-      $('movementEditor').hidden = !can('STOCK_MANAGE') && !can('BRANCH_STOCK_MANAGE');
+      for (const select of $('additionalMovementItems').querySelectorAll('select')) fillMovementProducts(select);
+      $('movementEditor').hidden = !can('STOCK_MANAGE') && !can('BRANCH_STOCK_MANAGE') && !can('STOCK_TRANSFER');
+      updateMovementFields();
       renderMovementHistory();
     }
 
     function renderMovementHistory() {
       const body = $('movementRows'); body.replaceChildren();
       const location = $('historyLocation').value; const direction = $('historyDirection').value;
-      const rows = movementHistory.filter(m => (!location || (m.branchId == null ? 'central' : String(m.branchId)) === location)
+      const rows = movementHistory.filter(m => (!location || (m.locationKeys || [m.branchId == null ? 'central' : String(m.branchId)]).includes(location))
         && (!direction || m.direction === direction));
       if (!rows.length) emptyRow(body, 'Gösterilecek stok hareketi yok.', 8);
       for (const m of rows) {
         const row = document.createElement('tr');
-        cell(row, clock.format(new Date(m.createdAt))); cell(row, m.locationName);
-        cell(row, m.productName + ' · ' + m.sku); cell(row, m.direction === 'IN' ? 'Giriş' : 'Çıkış');
-        cell(row, numbers.format(m.quantity), 'numeric'); cell(row, numbers.format(m.remainingQuantity), 'numeric');
+        cell(row, dates.format(new Date(m.createdAt))); cell(row, m.locationName);
+        cell(row, m.productName + ' · ' + m.sku); cell(row, m.direction === 'IN' ? 'Giriş' : m.direction === 'OUT' ? 'Çıkış' : 'Aktarım');
+        cell(row, numbers.format(m.quantity), 'numeric'); cell(row, m.remaining ?? numbers.format(m.remainingQuantity), 'numeric');
         cell(row, [m.reason, m.note].filter(Boolean).join(' · ') || '—'); cell(row, m.username);
         body.append(row);
+      }
+    }
+
+    function fillMovementProducts(select) {
+      const selected = select.value; select.replaceChildren(new Option('Ürün seç', ''));
+      for (const product of movementProducts) select.add(new Option(product.name + ' · ' + product.sku, String(product.id)));
+      if (movementProducts.some(p => String(p.id) === selected)) select.value = selected;
+    }
+
+    function addMovementItem() {
+      const row = document.createElement('div'); row.className = 'tag-row';
+      const productLabel = document.createElement('label'); productLabel.textContent = 'Ürün';
+      const select = document.createElement('select'); select.required = true; fillMovementProducts(select); productLabel.append(select);
+      const quantityLabel = document.createElement('label'); quantityLabel.textContent = 'Adet';
+      const quantity = document.createElement('input'); quantity.type = 'number'; quantity.min = '1'; quantity.max = '2147483647'; quantity.required = true; quantityLabel.append(quantity);
+      const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'secondary'; remove.textContent = 'Kaldır';
+      remove.addEventListener('click', () => row.remove()); row.append(productLabel, quantityLabel, remove); $('additionalMovementItems').append(row);
+    }
+
+    function updateMovementFields() {
+      for (const option of $('movementDirection').options) {
+        option.disabled = option.value === 'TRANSFER' ? !can('STOCK_TRANSFER') : !can('STOCK_MANAGE') && !can('BRANCH_STOCK_MANAGE');
+      }
+      if ($('movementDirection').selectedOptions[0]?.disabled) $('movementDirection').value = [...$('movementDirection').options].find(o => !o.disabled)?.value || 'IN';
+      const transfer = $('movementDirection').value === 'TRANSFER';
+      $('movementTargetField').hidden = !transfer; $('movementTargetLocation').disabled = !transfer; $('movementTargetLocation').required = transfer;
+      $('movementLocationLabel').firstChild.textContent = $('movementDirection').value === 'IN' ? 'Hedef stok yeri' : 'Kaynak stok yeri';
+      const selected = $('movementType').value;
+      $('movementType').replaceChildren(new Option('Özel ad kullan', ''));
+      for (const type of operationTypes.filter(t => t.active !== false && t.kind === $('movementDirection').value)) $('movementType').add(new Option(type.name, String(type.id)));
+      if ([...$('movementType').options].some(o => o.value === selected)) $('movementType').value = selected;
+      $('movementReason').readOnly = $('movementType').value !== '';
+      if ($('movementType').value) $('movementReason').value = $('movementType').selectedOptions[0].textContent;
+    }
+
+    function resetOperationTypeForm() {
+      editingOperationType = null; $('operationTypeForm').reset(); $('cancelOperationTypeEdit').hidden = true;
+      $('operation-type-form-title').textContent = 'Hareket adı ekle';
+    }
+
+    async function refreshOperationTypes() {
+      if (!can('STOCK_TYPES_MANAGE')) return;
+      const types = await api('/inventory-operation-types?includeArchived=true'); operationTypes = types;
+      const body = $('operationTypeRows'); body.replaceChildren();
+      if (!types.length) emptyRow(body, 'Henüz hareket adı yok.', 4);
+      for (const type of types) {
+        const row = document.createElement('tr'); cell(row, type.name);
+        cell(row, type.kind === 'IN' ? 'Giriş' : type.kind === 'OUT' ? 'Çıkış' : 'Aktarım');
+        cell(row, type.active ? 'Etkin' : 'Arşivlenmiş'); const actions = document.createElement('div'); actions.className = 'actions';
+        const edit = document.createElement('button'); edit.type = 'button'; edit.className = 'secondary'; edit.textContent = 'Düzenle';
+        edit.addEventListener('click', () => { editingOperationType = type; $('operationTypeName').value = type.name;
+          $('operationTypeKind').value = type.kind; $('cancelOperationTypeEdit').hidden = false; $('operation-type-form-title').textContent = 'Hareket adını düzenle'; });
+        const archive = document.createElement('button'); archive.type = 'button'; archive.className = 'secondary'; archive.textContent = type.active ? 'Arşivle' : 'Yeniden aç';
+        archive.addEventListener('click', () => action(archive, async () => {
+          await api('/inventory-operation-types/' + type.id, 'PUT', { name: type.name, kind: type.kind, version: type.version, active: !type.active });
+          await refreshOperationTypes(); notify('Hareket adı güncellendi.');
+        })); actions.append(edit, archive); cell(row, actions); body.append(row);
       }
     }
 
@@ -1415,23 +1519,7 @@
     }
 
     async function refreshBranchInventory() {
-      const session = token;
-      const [movements] = await Promise.all([api('/branches/movements'), refreshAdminBranchStock()]);
-      if (token !== session || !isAdmin) return;
-      const body = $('branchMovementRows');
-      body.replaceChildren();
-      if (!movements.length) emptyRow(body, 'Henüz şube stok hareketi yok.', 7);
-      for (const movement of movements) {
-        const row = document.createElement('tr');
-        cell(row, dates.format(new Date(movement.createdAt)));
-        cell(row, movement.branchName);
-        cell(row, movement.productName + ' · ' + movement.sku);
-        cell(row, movement.username);
-        cell(row, movement.type === 'SALE' ? 'Satış' : 'Stok düzenleme');
-        cell(row, signedNumbers.format(movement.change), 'numeric');
-        cell(row, numbers.format(movement.newQuantity), 'numeric');
-        body.append(row);
-      }
+      if (isAdmin) await refreshAdminBranchStock();
     }
 
     async function refreshEmployeeStock() {
@@ -1572,6 +1660,8 @@
       catalogProducts = []; tagSuggestions = []; catalogFilters = []; movementHistory = []; movementRequest++;
       $('productSearch').value = ''; $('activeTagFilters').replaceChildren(); $('movementRows').replaceChildren();
       $('movementEditor').hidden = true; $('movementForm').reset();
+      $('additionalMovementItems').replaceChildren(); pendingInventoryOperation = null; movementProducts = []; operationTypes = [];
+      resetOperationTypeForm();
       resetRoleForm();
       closeEmployeeEditor();
       employeeListRequest++;
@@ -1869,15 +1959,36 @@
     $('historyLocation').addEventListener('change', renderMovementHistory);
     $('historyDirection').addEventListener('change', renderMovementHistory);
     $('refreshMovements').addEventListener('click', event => action(event.currentTarget, refreshMovements));
+    $('addMovementItem').addEventListener('click', addMovementItem);
+    $('movementDirection').addEventListener('change', () => { $('movementType').value = ''; $('movementReason').value = ''; updateMovementFields(); });
+    $('movementType').addEventListener('change', updateMovementFields);
+    $('cancelOperationTypeEdit').addEventListener('click', resetOperationTypeForm);
+    $('operationTypeForm').addEventListener('submit', event => {
+      event.preventDefault(); action(event.submitter, async () => {
+        const request = { name: $('operationTypeName').value.trim(), kind: $('operationTypeKind').value };
+        if (editingOperationType) { request.version = editingOperationType.version; request.active = editingOperationType.active; }
+        await api(editingOperationType ? '/inventory-operation-types/' + editingOperationType.id : '/inventory-operation-types',
+          editingOperationType ? 'PUT' : 'POST', request);
+        resetOperationTypeForm(); await refreshOperationTypes(); notify('Hareket adı kaydedildi.');
+      });
+    });
     $('movementForm').addEventListener('submit', event => {
       event.preventDefault();
       action(event.submitter, async () => {
         const location = $('movementLocation').value;
-        await api('/stock-movements', 'POST', {
-          productId: Number($('movementProduct').value), branchId: location === 'central' ? null : Number(location),
-          direction: $('movementDirection').value, quantity: Number($('movementQuantity').value),
-          reason: $('movementReason').value.trim() || null, note: $('movementNote').value.trim() || null
-        });
+        const target = $('movementTargetLocation').value, kind = $('movementDirection').value;
+        const locationId = value => value === 'central' ? null : Number(value);
+        const items = [{ productId: Number($('movementProduct').value), quantity: Number($('movementQuantity').value) }];
+        for (const row of $('additionalMovementItems').children) items.push({ productId: Number(row.querySelector('select').value), quantity: Number(row.querySelector('input').value) });
+        const request = { kind, sourceBranchId: kind === 'IN' ? null : locationId(location),
+          targetBranchId: kind === 'OUT' ? null : locationId(kind === 'IN' ? location : target),
+          typeId: $('movementType').value ? Number($('movementType').value) : null,
+          label: $('movementReason').value.trim() || null, note: $('movementNote').value.trim() || null, items };
+        if (kind === 'TRANSFER' && request.sourceBranchId === request.targetBranchId) throw new Error('Aktarım kaynağı ve hedefi farklı olmalı.');
+        const signature = JSON.stringify(request);
+        if (pendingInventoryOperation?.signature !== signature) pendingInventoryOperation = { signature, requestId: newSaleId() };
+        await api('/inventory-operations', 'POST', { ...request, requestId: pendingInventoryOperation.requestId });
+        pendingInventoryOperation = null; $('additionalMovementItems').replaceChildren(); $('movementType').value = '';
         $('movementQuantity').value = ''; $('movementReason').value = ''; $('movementNote').value = '';
         await Promise.all([refreshMovements(), isBranchEmployee ? refreshEmployeeStock() : refresh()]);
         notify('Stok hareketi ve ürün adedi güncellendi.');

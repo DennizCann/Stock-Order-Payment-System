@@ -35,3 +35,11 @@ Updates below must describe verified behavior and distinguish live-provider test
 - Location viewing and management can be delegated independently. New privileges are not granted to existing workers automatically. Unused roles can be removed; assigned roles require reassignment first.
 - Verification: all 84 JUnit/MockMvc tests passed. Actual HTTP/browser checks against an isolated H2 database covered account editing, status changes, warehouse create/rename/archive/restore and a delegated location manager. Flyway migrations through V15 applied with schema validation.
 - Outstanding: transfer/batch movement workflows, stock classifications, live marketplace adapters and stock-allocation settings, automatic synchronization/recovery, full order lifecycle, production deployment and recovery verification.
+
+### Batch inventory operations and internal transfers
+
+- Receipts, issues and internal transfers accept one or multiple products. A failed line rolls back the entire batch. Transfers preserve total physical quantity and respect stock reserved by orders.
+- Client request IDs are durable: retrying an identical request returns its receipt, including after a lost response. Reusing the ID for a different request returns a conflict. History groups transfer legs and preserves product, location, actor and movement-name snapshots.
+- Authorized managers create, rename, archive and restore movement names tied to the three operation kinds. Transfer and movement-name management are separate permissions. Branch employees remain restricted to their own location.
+- Verification: all 91 JUnit/MockMvc tests passed. Browser checks covered multi-product transfers, rollback, corrected retry, a committed request whose response was lost, history filtering and layouts at 1440/900/390 pixels. Flyway migrations through V16 applied with schema validation on an isolated database.
+- Outstanding: real display/non-saleable stock classifications, live marketplace adapters and stock-allocation settings, automatic synchronization/recovery, full order lifecycle, production deployment and recovery verification. Custom movement names alone do not implement stock classifications.

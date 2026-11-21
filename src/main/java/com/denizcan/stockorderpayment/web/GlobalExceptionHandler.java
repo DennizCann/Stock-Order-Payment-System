@@ -21,6 +21,16 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ProblemDetail dataConflict(org.springframework.dao.DataIntegrityViolationException exception) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "Kayıt başka bir işlemle çakışıyor veya kullanımda. Listeyi yenileyip tekrar dene.");
+    }
+
+    @ExceptionHandler(org.springframework.orm.ObjectOptimisticLockingFailureException.class)
+    public ProblemDetail staleEdit(org.springframework.orm.ObjectOptimisticLockingFailureException exception) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "Kayıt başka bir kullanıcı tarafından değiştirildi. Listeyi yenileyip tekrar düzenle.");
+    }
+
     @ExceptionHandler(ResponseStatusException.class)
     public ProblemDetail handleStatus(ResponseStatusException ex) {
         return ex.getBody();

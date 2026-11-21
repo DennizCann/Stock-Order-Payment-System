@@ -88,7 +88,8 @@ public class StockMovementService {
         User user = user(username);
         List<Movement> result = new ArrayList<>();
         if (user.getRole() != Role.BRANCH_EMPLOYEE) {
-            var centralLines = centralMovements.findTop100ByOrderByCreatedAtDescIdDesc();
+            var centralLines = centralMovements.findTop100ByOperationIdIsNullAndTypeNotInAndQuantityChangeNotOrderByCreatedAtDescIdDesc(
+                    List.of(InventoryTransactionType.RESERVATION, InventoryTransactionType.RELEASE), 0);
             Map<Long, Product> catalog = new HashMap<>();
             products.findAllById(centralLines.stream().map(InventoryTransaction::getProductId).toList())
                     .forEach(p -> catalog.put(p.getId(), p));
@@ -104,8 +105,8 @@ public class StockMovementService {
             }
         }
         var branchLines = user.getRole() == Role.BRANCH_EMPLOYEE
-                ? branchMovements.findTop100ByStockBranchIdOrderByCreatedAtDescIdDesc(user.getBranch().getId())
-                : branchMovements.findTop100ByOrderByCreatedAtDescIdDesc();
+                ? branchMovements.findTop100ByStockBranchIdAndOperationIdIsNullOrderByCreatedAtDescIdDesc(user.getBranch().getId())
+                : branchMovements.findTop100ByOperationIdIsNullOrderByCreatedAtDescIdDesc();
         for (BranchStockMovement m : branchLines) {
             if (m.getChange() == 0) continue;
             var s = m.getStock();

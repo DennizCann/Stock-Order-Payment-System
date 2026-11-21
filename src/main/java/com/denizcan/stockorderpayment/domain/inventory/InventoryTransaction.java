@@ -51,6 +51,8 @@ public class InventoryTransaction {
 
     @Column(length = 100)
     private String reason;
+    @Column(name = "operation_id") private java.util.UUID operationId;
+    public void setOperationId(java.util.UUID operationId) { this.operationId = operationId; }
 
     public void setReason(String reason) { this.reason = reason; }
 

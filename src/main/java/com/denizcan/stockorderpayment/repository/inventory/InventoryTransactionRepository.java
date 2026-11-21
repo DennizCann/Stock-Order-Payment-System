@@ -9,4 +9,6 @@ public interface InventoryTransactionRepository extends JpaRepository<InventoryT
 
     List<InventoryTransaction> findByProductIdOrderByCreatedAtDesc(Long productId);
     List<InventoryTransaction> findTop100ByOrderByCreatedAtDescIdDesc();
+    List<InventoryTransaction> findTop100ByOperationIdIsNullAndTypeNotInAndQuantityChangeNotOrderByCreatedAtDescIdDesc(
+            java.util.Collection<com.denizcan.stockorderpayment.domain.inventory.InventoryTransactionType> excluded, int change);
 }
