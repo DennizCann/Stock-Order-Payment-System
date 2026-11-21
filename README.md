@@ -195,7 +195,9 @@ Deployment preparation and recovery: [COMPANY_RUNBOOK.md](docs/COMPANY_RUNBOOK.m
 
 ## Demo credentials
 
-The application seeds these users outside the `prod` profile:
+Fresh development installations seed the administrator only. The explicit `demo`
+and `test` profiles also seed the sample worker below. Production uses explicit
+owner bootstrap settings. Existing accounts are never deleted by this initializer.
 
 | Username | Password | Role |
 |---|---|---|

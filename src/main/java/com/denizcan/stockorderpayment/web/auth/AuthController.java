@@ -72,6 +72,12 @@ public class AuthController {
         return ResponseEntity.noContent().build();
     }
 
+    public record PasswordLinkRequest(@NotBlank String revision) {}
+    @PostMapping("/accounts/{id}/password-link") @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<AccountService.PasswordLink> passwordLink(@PathVariable Long id,@Valid @RequestBody PasswordLinkRequest request) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(accounts.passwordLink(id,request.revision()));
+    }
+
     public record InviteRequest(String username, Role role, Long branchId, Long employeeRoleId,
                                 Set<Permission> excludedPermissions, Set<Permission> addedPermissions, String fullName) {}
     public record UpdateAccountRequest(@NotBlank String revision, @NotBlank String username,

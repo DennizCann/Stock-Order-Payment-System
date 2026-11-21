@@ -255,19 +255,19 @@ public class AccountService {
                 HttpStatus.BAD_REQUEST, "Seçilen şube bulunamadı."));
     }
 
-    private static void validateUsername(String username) {
+    static void validateUsername(String username) {
         if (username == null || !USERNAME.matcher(username).matches()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Kullanıcı adı 3–64 karakter olmalı. Harf, rakam, nokta, tire veya alt çizgi kullan.");
         }
     }
 
-    private static void validateFullName(String fullName) {
+    static void validateFullName(String fullName) {
         if (fullName != null && fullName.length() > 100)
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Çalışan adı en fazla 100 karakter olabilir.");
     }
 
-    private static void validatePassword(String password) {
+    static void validatePassword(String password) {
         if (password == null || password.isBlank() || password.codePointCount(0, password.length()) < 12
                 || password.getBytes(StandardCharsets.UTF_8).length > 72) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
@@ -281,6 +281,18 @@ public class AccountService {
 
     private static ResponseStatusException invalidInvitation() {
         return new ResponseStatusException(HttpStatus.BAD_REQUEST, "Bağlantı geçersiz veya süresi dolmuş.");
+    }
+
+    public record PasswordLink(String token,EmployeeAccount account) {}
+    @Transactional
+    public PasswordLink passwordLink(Long id,String revision) {
+        User user=users.findByIdForUpdate(id).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND,"Çalışan bulunamadı."));
+        if(user.getRole()==Role.ADMIN) throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Yönetici kendi parolasını Hesabım bölümünden değiştirmeli.");
+        if(!EmployeeAccount.from(user).revision().equals(revision)) throw new ResponseStatusException(HttpStatus.CONFLICT,"Çalışan bilgileri değişmiş. Listeyi yenile.");
+        if(!user.isEnabled()&&user.getActivationTokenHash()==null) throw new ResponseStatusException(HttpStatus.CONFLICT,"Kapalı hesabı önce etkinleştir; sonra parola bağlantısı oluştur.");
+        byte[] bytes=new byte[32];RANDOM.nextBytes(bytes);String token=Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+        user.prepareActivation(hash(token),Instant.now().plus(Duration.ofHours(24)),user.getRole(),user.getBranch());
+        users.flush();return new PasswordLink(token,EmployeeAccount.from(user));
     }
 
     private static String hash(String token) {

@@ -203,6 +203,10 @@
       .catalog-table .actions { flex-direction: row; }
     }
     @media (max-width: 560px) { .tag-row { grid-template-columns: minmax(0, 1fr); } }
+    dialog.account-dialog { width:min(560px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;border:1px solid #dbe4f2;border-radius:16px;padding:24px;color:var(--ink); }
+    dialog.account-dialog::backdrop { background:rgba(16,30,53,.45); }
+    .account-dialog .card-head { padding:0 0 16px; }
+    .account-dialog input { min-width:0; }
   </style>
 </head>
 <body>
@@ -261,13 +265,13 @@
         <a href="#branches"><svg class="icon" aria-hidden="true"><use href="#icon-stock"/></svg>Şubeler</a>
         <a href="#accounts" data-admin-only hidden><svg class="icon" aria-hidden="true"><use href="#icon-box"/></svg>Kullanıcılar</a>
       </nav>
-      <p class="rail-footer">Yerel demo ortamı</p>
+      <p class="rail-footer">Satış ve stok yönetimi</p>
     </aside>
 
     <div>
       <header class="topbar">
         <p>Satış Operasyon Merkezi</p>
-        <div class="user-area"><span id="signedInUser"></span><button id="logout" class="secondary" type="button">Çıkış</button></div>
+        <div class="user-area"><span id="signedInUser"></span><button id="openMyAccount" class="secondary" type="button">Hesabım</button><button id="logout" class="secondary" type="button">Çıkış</button></div>
       </header>
       <main>
         <div id="notice" class="notice" role="status" hidden></div>
@@ -635,12 +639,34 @@
               <p class="muted">Rol değiştiğinde yeni rolün izinleri uygulanır; uygun kişisel istisnalar korunur. Kullanıcı adı, şube veya hesap durumu değişirse çalışanın yeniden giriş yapması gerekir.</p>
               <p id="employeeProfileError" class="error" role="alert"></p>
               <div class="actions"><button class="primary" type="submit">Bilgileri kaydet</button><button id="cancelEmployeeProfile" class="secondary" type="button">Vazgeç</button></div>
+              <div class="section"><button id="employeePasswordLink" class="secondary" type="button">Yeni parola bağlantısı oluştur</button><p class="muted">Mevcut oturumlar kapanır. Çalışan, bağlantıdan kendi yeni parolasını belirler.</p></div>
+              <label id="profilePasswordLinkResult" hidden>Tek kullanımlık parola bağlantısı · 24 saat geçerli<input id="profilePasswordLink" type="url" readonly><span class="muted">Yalnızca ilgili çalışanla paylaş.</span></label>
             </form>
           </section>
         </section>
       </main>
     </div>
   </div>
+
+  <dialog id="myAccountDialog" class="account-dialog" aria-labelledby="myAccountTitle">
+    <header class="card-head"><h2 id="myAccountTitle">Hesabım</h2><button id="closeMyAccount" class="secondary" type="button">Kapat</button></header>
+    <p id="myAccountRole" class="muted"></p>
+    <form id="myProfileForm" class="form-stack">
+      <label>Adın<input id="myFullName" maxlength="100" autocomplete="name"></label>
+      <label>Kullanıcı adın<input id="myUsername" minlength="3" maxlength="64" pattern="[A-Za-z0-9._\-]{3,64}" autocomplete="username" required></label>
+      <label>Kullanıcı adını değiştiriyorsan mevcut parolan<input id="myIdentityPassword" type="password" autocomplete="current-password"></label>
+      <p class="muted">Kullanıcı adı değişirse açık oturumların kapanır. Rol ve yetkilerini buradan değiştiremezsin.</p>
+      <button class="primary" type="submit">Bilgilerimi kaydet</button>
+    </form>
+    <section class="section"><h3>Parolamı değiştir</h3><form id="myPasswordForm" class="form-stack">
+      <label>Mevcut parola<input id="myCurrentPassword" type="password" autocomplete="current-password" required></label>
+      <label>Yeni parola<input id="myNewPassword" type="password" autocomplete="new-password" minlength="12" maxlength="72" required></label>
+      <label>Yeni parolayı doğrula<input id="myConfirmPassword" type="password" autocomplete="new-password" minlength="12" maxlength="72" required></label>
+      <p class="muted">En az 12 karakter. Parola değişince tüm açık oturumların kapanır.</p>
+      <button class="primary" type="submit">Parolamı değiştir</button>
+    </form></section>
+    <p id="myAccountError" class="error" role="alert"></p>
+  </dialog>
 
   <script>
     const $ = id => document.getElementById(id);
@@ -756,6 +782,7 @@
     let channelPolicies = [];
     let channelConnection = null;
     let pendingPublicationId = null;
+    let myAccount = null;
 
     function can(permission) {
       return isAdmin || permissions.has(permission);
@@ -855,11 +882,14 @@
     function closeEmployeeProfile() {
       editingProfile = null; $('employeeProfileEditor').hidden = true; $('employeeProfileForm').reset();
       $('employeeProfileError').textContent = '';
+      $('profilePasswordLinkResult').hidden=true;$('profilePasswordLink').value='';
       if (location.hash === '#employee-profile') location.hash = '#employee-list';
     }
 
     function editEmployeeProfile(employee) {
       editingProfile = employee;
+      $('profilePasswordLinkResult').hidden=true;$('profilePasswordLink').value='';
+      $('employeePasswordLink').disabled=employee.status==='DISABLED';
       $('profileRole').replaceChildren(new Option('Merkez çalışanı (hazır)', 'USER'), new Option('Şube çalışanı (hazır)', 'BRANCH_EMPLOYEE'));
       for (const role of employeeRoles) $('profileRole').add(new Option(role.name, 'profile:' + role.id));
       $('profileRole').value = employee.employeeRoleId ? 'profile:' + employee.employeeRoleId : employee.scope;
@@ -1712,6 +1742,8 @@
     });
 
     $('logout').addEventListener('click', () => {
+      if($('myAccountDialog').open) $('myAccountDialog').close();
+      myAccount=null;$('myProfileForm').reset();$('myPasswordForm').reset();
       token = '';
       isAdmin = false;
       isBranchEmployee = false;
@@ -1769,6 +1801,10 @@
       }));
     });
     window.addEventListener('hashchange', () => {
+      if(/^#activate=[A-Za-z0-9_-]{43}$/.test(location.hash)) {
+        if(!$('workspace').hidden) $('logout').click();
+        readActivationLink();return;
+      }
       if ($('workspace').hidden) { readActivationLink(); return; }
       notify('');
       showView();
@@ -1796,6 +1832,15 @@
       $('branch-create-heading').textContent = 'Şube / depo ekle'; location.hash = '#branch-list';
     });
     $('profileRole').addEventListener('change', updateProfileBranch);
+    $('employeePasswordLink').addEventListener('click',event=>action(event.currentTarget,async()=>{
+      if(!editingProfile) return;
+      if(!confirm('Bu çalışanın açık oturumları kapatılsın ve yeni parola bağlantısı oluşturulsun mu?')) return;
+      const result=await api('/auth/accounts/'+editingProfile.id+'/password-link','POST',{revision:editingProfile.revision});
+      editEmployeeProfile(result.account);
+      const link=new URL(location.pathname,location.origin);link.hash='activate='+result.token;
+      $('profilePasswordLink').value=link.href;$('profilePasswordLinkResult').hidden=false;
+      await refreshEmployees();notify('Yeni parola bağlantısı hazır. Önceki bağlantılar ve oturumlar artık geçersiz.');
+    },error=>{$('employeeProfileError').textContent=error.message;}));
     $('cancelEmployeeProfile').addEventListener('click', closeEmployeeProfile);
     $('employeeProfileForm').addEventListener('submit', event => {
       event.preventDefault(); if (!editingProfile) return;
@@ -1970,6 +2015,33 @@
       }, failure => { error.textContent = failure.message; });
     });
     readActivationLink();
+
+    $('openMyAccount').addEventListener('click',event=>action(event.currentTarget,async()=>{
+      const session=token;const profile=await api('/auth/me');if(session!==token) return;
+      myAccount=profile;$('myProfileForm').reset();$('myPasswordForm').reset();
+      $('myFullName').value=profile.fullName||'';$('myUsername').value=profile.username;
+      $('myAccountRole').textContent=[profile.roleName,profile.branchName].filter(Boolean).join(' · ');
+      $('myAccountError').textContent='';$('myAccountDialog').showModal();
+    }));
+    $('closeMyAccount').addEventListener('click',()=>{$('myAccountDialog').close();});
+    $('myAccountDialog').addEventListener('close',()=>{myAccount=null;$('myProfileForm').reset();$('myPasswordForm').reset();$('myAccountError').textContent='';});
+    $('myProfileForm').addEventListener('submit',event=>{
+      event.preventDefault();if(!myAccount) return;$('myAccountError').textContent='';
+      action(event.submitter,async()=>{
+        const result=await api('/auth/me','PUT',{revision:myAccount.revision,username:$('myUsername').value.trim(),fullName:$('myFullName').value.trim()||null,currentPassword:$('myIdentityPassword').value||null});
+        if(result.reloginRequired){$('logout').click();$('username').value=result.username;$('activationSuccess').textContent='Kullanıcı adın güncellendi. Yeni kullanıcı adınla tekrar giriş yap.';}
+        else {$('signedInUser').textContent=[result.fullName||result.username,result.roleName].filter(Boolean).join(' · ');$('myAccountDialog').close();notify('Hesap bilgilerin güncellendi.');}
+      },error=>{$('myAccountError').textContent=error.message;});
+    });
+    $('myPasswordForm').addEventListener('submit',event=>{
+      event.preventDefault();if(!myAccount) return;$('myAccountError').textContent='';
+      if($('myNewPassword').value!==$('myConfirmPassword').value){$('myAccountError').textContent='Yeni parolalar aynı olmalı.';return;}
+      action(event.submitter,async()=>{
+        const username=myAccount.username;
+        await api('/auth/me/password','POST',{currentPassword:$('myCurrentPassword').value,newPassword:$('myNewPassword').value});
+        $('logout').click();$('username').value=username;$('activationSuccess').textContent='Parolan değiştirildi. Yeni parolanla tekrar giriş yap.';
+      },error=>{$('myAccountError').textContent=error.message;});
+    });
 
     async function showOrderHistory(id) {
       const session=token;const changes=await api('/operations/orders/' + id + '/history');if (session!==token) return;

@@ -23,10 +23,11 @@ public class DataInitializer {
 
     @Bean
     @Profile("!prod")
-    CommandLineRunner seedUsers() {
+    CommandLineRunner seedUsers(Environment environment) {
         return args -> {
             createIfMissing("admin", "admin123", Role.ADMIN);
-            createIfMissing("user", "user123", Role.USER);
+            if(environment.acceptsProfiles(org.springframework.core.env.Profiles.of("test","demo")))
+                createIfMissing("user", "user123", Role.USER);
         };
     }
 
@@ -38,6 +39,8 @@ public class DataInitializer {
             String password = environment.getProperty("app.bootstrap.admin.password", "");
             if (!username.isBlank() || !password.isBlank()) {
                 accounts.bootstrapAdmin(username, password);
+            } else if(!userRepository.existsByRoleAndEnabledTrue(Role.ADMIN)) {
+                throw new IllegalStateException("İlk kurulum için yönetici kullanıcı adı ve parolasını kurulum ayarlarında tanımla.");
             }
         };
     }

@@ -110,11 +110,16 @@ public class User {
     }
 
     public void prepareActivation(String tokenHash, Instant expiresAt, Role role, Branch branch) {
+        sessionVersion++;
         enabled = false;
         this.role = role;
         this.branch = branch;
         activationTokenHash = tokenHash;
         activationExpiresAt = expiresAt;
+    }
+
+    public void changePassword(String encodedPassword) {
+        password=encodedPassword;sessionVersion++;
     }
 
     public User(String username, String password, Role role) {

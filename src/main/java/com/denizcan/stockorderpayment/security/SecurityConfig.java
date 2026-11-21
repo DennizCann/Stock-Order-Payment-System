@@ -42,6 +42,7 @@ public class SecurityConfig {
                                 "/v3/api-docs/**"
                         ).permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/login", "/api/v1/auth/activate").permitAll()
+                        .requestMatchers("/api/v1/auth/me","/api/v1/auth/me/**").authenticated()
                         .requestMatchers("/api/v1/roles/**", "/api/v1/roles").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET,"/api/v1/channel-stock/**").hasAnyAuthority("ROLE_ADMIN","CHANNELS_VIEW")
                         .requestMatchers("/api/v1/channel-stock/**").hasAnyAuthority("ROLE_ADMIN","CHANNELS_MANAGE")
