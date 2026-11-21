@@ -258,7 +258,7 @@
         <a href="#overview" data-central-only><svg class="icon" aria-hidden="true"><use href="#icon-home"/></svg>Genel Bakış</a>
         <a href="#channels"><svg class="icon" aria-hidden="true"><use href="#icon-channels"/></svg>Satış Kanalları</a>
         <a href="#products"><svg class="icon" aria-hidden="true"><use href="#icon-box"/></svg>Ürünler</a>
-        <a href="#branches" data-admin-only hidden><svg class="icon" aria-hidden="true"><use href="#icon-stock"/></svg>Şubeler</a>
+        <a href="#branches"><svg class="icon" aria-hidden="true"><use href="#icon-stock"/></svg>Şubeler</a>
         <a href="#accounts" data-admin-only hidden><svg class="icon" aria-hidden="true"><use href="#icon-box"/></svg>Kullanıcılar</a>
       </nav>
       <p class="rail-footer">Yerel demo ortamı</p>
@@ -474,13 +474,15 @@
             <header class="card-head"><h2 id="branch-form-title">Şube ekle</h2></header>
             <form id="branchForm" class="form-stack">
               <label>Şube adı<input id="branchName" maxlength="100" required></label>
+              <label>Yer türü<select id="branchKind"><option value="BRANCH">Şube</option><option value="WAREHOUSE">Depo</option></select></label>
               <button class="primary" type="submit">Şubeyi kaydet</button>
+              <button id="cancelBranchEdit" class="secondary" type="button" hidden>Vazgeç</button>
             </form>
           </section>
           <section class="card section" aria-labelledby="branch-list-title">
             <header class="card-head"><h2 id="branch-list-title">Kayıtlı şubeler</h2></header>
             <div class="table-wrap">
-              <table><thead><tr><th scope="col">Şube adı</th></tr></thead><tbody id="branchRows"></tbody></table>
+              <table><thead><tr><th scope="col">Şube / Depo</th><th scope="col">Tür</th><th scope="col">Durum</th><th scope="col">İşlem</th></tr></thead><tbody id="branchRows"></tbody></table>
             </div>
           </section>
         </section>
@@ -534,6 +536,7 @@
           <section class="card account-form" aria-labelledby="invite-title">
             <header class="card-head"><div><h2 id="invite-title">Çalışan hesabı</h2><p class="muted">Bekleyen bir hesap için aynı kullanıcı adıyla yeni bağlantı oluşturabilirsin.</p></div></header>
             <form id="inviteForm" class="form-stack">
+              <label>Çalışanın adı<input id="inviteFullName" maxlength="100" autocomplete="name"></label>
               <label>Kullanıcı adı<input id="inviteUsername" autocomplete="off" minlength="3" maxlength="64" pattern="[A-Za-z0-9._\-]{3,64}" required></label>
               <label>Rol
                 <select id="inviteRole" required>
@@ -564,7 +567,7 @@
             </header>
             <div class="table-wrap" role="region" aria-label="Kayıtlı çalışanlar" tabindex="0">
               <table class="employee-table">
-                <thead><tr><th scope="col">Kullanıcı adı</th><th scope="col">Rol</th><th scope="col">Şube</th><th scope="col">Durum</th><th scope="col">Yetkiler</th><th scope="col">İşlem</th></tr></thead>
+                <thead><tr><th scope="col">Çalışan / Kullanıcı adı</th><th scope="col">Rol</th><th scope="col">Şube</th><th scope="col">Durum</th><th scope="col">Yetkiler</th><th scope="col">İşlem</th></tr></thead>
                 <tbody id="employeeRows"></tbody>
               </table>
             </div>
@@ -579,6 +582,20 @@
                 <button type="submit" class="primary">Yetkileri kaydet</button>
                 <button id="cancelEmployeeEdit" type="button" class="secondary">Vazgeç</button>
               </div>
+            </form>
+          </section>
+          <section id="employeeProfileEditor" class="card account-form" aria-labelledby="employee-profile-title" hidden>
+            <header class="card-head"><h2 id="employee-profile-title">Çalışan bilgileri</h2></header>
+            <form id="employeeProfileForm" class="form-stack">
+              <label>Çalışanın adı<input id="profileFullName" maxlength="100"></label>
+              <label>Kullanıcı adı<input id="profileUsername" minlength="3" maxlength="64" pattern="[A-Za-z0-9._\-]{3,64}" required></label>
+              <label>Rol<select id="profileRole" required></select></label>
+              <label id="profileBranchField">Şube / Depo<select id="profileBranch"></select></label>
+              <label>Hesap durumu<select id="profileEnabled"><option value="true">Etkin</option><option value="false">Kapalı</option></select></label>
+              <p id="profileActivationHint" class="muted" hidden>Hesap parola belirlenmesini bekliyor; bağlantıyla etkinleştirilecek.</p>
+              <p class="muted">Rol değiştiğinde yeni rolün izinleri uygulanır; uygun kişisel istisnalar korunur. Kullanıcı adı, şube veya hesap durumu değişirse çalışanın yeniden giriş yapması gerekir.</p>
+              <p id="employeeProfileError" class="error" role="alert"></p>
+              <div class="actions"><button class="primary" type="submit">Bilgileri kaydet</button><button id="cancelEmployeeProfile" class="secondary" type="button">Vazgeç</button></div>
             </form>
           </section>
         </section>
@@ -626,6 +643,7 @@
     createSubview('employee-roles', 'accounts', 'Roller ve yetkiler', [$('employeeRoleForm').closest('section')]);
     createSubview('employee-create', 'accounts', 'Çalışan ekle', [$('inviteForm').closest('section')]);
     createSubview('employee-list', 'accounts', 'Çalışanlar ve yetkileri', [$('employeeRows').closest('section'), $('employeePermissionEditor')]);
+    createSubview('employee-profile', 'accounts', 'Çalışanı düzenle', [$('employeeProfileEditor')]);
     setSectionMenu('products', [
       { target: 'product-editor', title: 'Ürün ekle', description: 'Yeni ürünü, başlangıç adedini ve etiketlerini birlikte oluştur.', permission: 'PRODUCTS_CREATE', createProduct: true },
       { target: 'product-list', title: 'Ürün listesi', description: 'Ürünleri ara, etiketlerle filtrele ve bilgilerini düzenle.' },
@@ -635,7 +653,7 @@
       { target: 'movements', title: 'Stok hareketleri', description: 'Geçmiş giriş ve çıkışları, zamanı ve işlemi yapan kişiyi incele.' }
     ]);
     setSectionMenu('branches', [
-      { target: 'branch-create', title: 'Şube ekle', description: 'Yeni şubeni sisteme tanımla.' },
+      { target: 'branch-create', title: 'Şube / depo ekle', description: 'Yeni şubeni veya deponu sisteme tanımla.', permission: 'BRANCHES_MANAGE' },
       { target: 'branch-list', title: 'Şubeleri görüntüle', description: 'Kayıtlı şubelerini listele.' }
     ]);
     setSectionMenu('accounts', [
@@ -686,12 +704,17 @@
     let editingProductId = null;
     let movementHistory = [];
     let movementRequest = 0;
+    let loadedBranches = [];
+    let editingBranch = null;
+    let editingProfile = null;
 
     function can(permission) {
       return isAdmin || permissions.has(permission);
     }
 
     function canView(view) {
+      if (view.id === 'branches' || view.dataset.parent === 'branches')
+        return can(view.id === 'branch-create' ? 'BRANCHES_MANAGE' : 'BRANCHES_VIEW');
       if (view.hasAttribute('data-admin-view')) return isAdmin;
       if (view.id === 'channels') return isAdmin || !isBranchEmployee && can('ORDERS_VIEW');
       if (view.id === 'products') return can('PRODUCTS_VIEW') || can('STOCK_VIEW') || can('BRANCH_STOCK_VIEW');
@@ -716,6 +739,21 @@
       return { scope: employeeRole?.scope || selection, employeeRole };
     }
 
+    function synchronizePermissionChoices(body, input) {
+      const prerequisite = { BRANCH_SALE_CREATE: 'BRANCH_STOCK_VIEW', BRANCH_STOCK_MANAGE: 'BRANCH_STOCK_VIEW',
+        BRANCHES_MANAGE: 'BRANCHES_VIEW', ORDERS_CREATE: 'ORDERS_VIEW', STOCK_MANAGE: 'STOCK_VIEW',
+        PRODUCTS_CREATE: 'PRODUCTS_VIEW', PRODUCTS_EDIT: 'PRODUCTS_VIEW', PRODUCTS_DELETE: 'PRODUCTS_VIEW' };
+      if (input.checked && prerequisite[input.value]) {
+        const required = body.querySelector('input[value="' + prerequisite[input.value] + '"]');
+        if (required) required.checked = true;
+      } else if (!input.checked) {
+        for (const [dependent, required] of Object.entries(prerequisite)) {
+          const linked = body.querySelector('input[value="' + dependent + '"]');
+          if (required === input.value && linked) linked.checked = false;
+        }
+      }
+    }
+
     function renderRolePermissions(selected = []) {
       const body = $('employeeRolePermissions');
       body.replaceChildren();
@@ -726,6 +764,7 @@
         input.name = 'permission';
         input.value = permission.code;
         input.checked = selected.includes(permission.code);
+        input.addEventListener('change', () => synchronizePermissionChoices(body, input));
         label.append(input, document.createTextNode(permission.label));
         body.append(label);
       }
@@ -749,6 +788,38 @@
       $('employeePermissionChoices').querySelector('input')?.focus();
     }
 
+    function profileRoleSelection() {
+      const value = $('profileRole').value;
+      const role = employeeRoles.find(r => 'profile:' + r.id === value);
+      return { role: role?.scope || value, employeeRoleId: role?.id ?? null };
+    }
+
+    function updateProfileBranch() {
+      const forBranch = profileRoleSelection().role === 'BRANCH_EMPLOYEE';
+      $('profileBranchField').hidden = !forBranch;
+      $('profileBranch').disabled = !forBranch; $('profileBranch').required = forBranch;
+    }
+
+    function closeEmployeeProfile() {
+      editingProfile = null; $('employeeProfileEditor').hidden = true; $('employeeProfileForm').reset();
+      $('employeeProfileError').textContent = '';
+      if (location.hash === '#employee-profile') location.hash = '#employee-list';
+    }
+
+    function editEmployeeProfile(employee) {
+      editingProfile = employee;
+      $('profileRole').replaceChildren(new Option('Merkez çalışanı (hazır)', 'USER'), new Option('Şube çalışanı (hazır)', 'BRANCH_EMPLOYEE'));
+      for (const role of employeeRoles) $('profileRole').add(new Option(role.name, 'profile:' + role.id));
+      $('profileRole').value = employee.employeeRoleId ? 'profile:' + employee.employeeRoleId : employee.scope;
+      $('profileFullName').value = employee.fullName || ''; $('profileUsername').value = employee.username;
+      setOptions('profileBranch', 'Şube / depo seç', loadedBranches.filter(b => b.active !== false), b => b.name);
+      $('profileBranch').value = employee.branchId == null ? '' : String(employee.branchId);
+      $('profileEnabled').value = String(employee.enabled); $('profileEnabled').disabled = employee.status === 'PENDING';
+      $('profileActivationHint').hidden = employee.status !== 'PENDING';
+      $('employeeProfileError').textContent = ''; updateProfileBranch();
+      $('employeeProfileEditor').hidden = false; location.hash = '#employee-profile'; showView();
+    }
+
     async function refreshEmployees() {
       const session = token;
       const request = ++employeeListRequest;
@@ -759,10 +830,10 @@
       if (!employees.length) emptyRow(body, 'Henüz çalışan hesabı yok.', 6);
       for (const employee of employees) {
         const row = document.createElement('tr');
-        cell(row, employee.username);
+        cell(row, employee.fullName ? employee.fullName + ' · ' + employee.username : employee.username);
         cell(row, employee.roleName);
         cell(row, employee.branchName);
-        cell(row, employee.enabled ? 'Etkin' : 'Parola bekleniyor');
+        cell(row, employee.enabled ? 'Etkin' : employee.status === 'DISABLED' ? 'Kapalı' : 'Parola bekleniyor');
         const details = document.createElement('details');
         details.className = 'employee-permissions';
         const summary = document.createElement('summary');
@@ -797,7 +868,10 @@
         edit.className = 'secondary';
         edit.textContent = 'Yetkileri düzenle';
         edit.addEventListener('click', () => editEmployee(employee));
-        cell(row, edit);
+        const actions = document.createElement('div'); actions.className = 'form-stack';
+        const profile = document.createElement('button'); profile.type = 'button'; profile.className = 'secondary';
+        profile.textContent = 'Bilgileri düzenle'; profile.addEventListener('click', () => editEmployeeProfile(employee));
+        actions.append(profile, edit); cell(row, actions);
         const labels = ['Kullanıcı adı', 'Rol', 'Şube', 'Durum', 'Yetkiler', 'İşlem'];
         Array.from(row.cells).forEach((column, index) => { column.dataset.label = labels[index]; });
         body.append(row);
@@ -847,7 +921,12 @@
           $('employeeRoleForm').scrollIntoView({behavior:'smooth',block:'center'});
           $('employeeRoleName').focus();
         });
-        cell(row, edit);
+        const roleActions = document.createElement('div'); roleActions.className = 'actions';
+        const removeRole = document.createElement('button'); removeRole.type = 'button'; removeRole.className = 'secondary danger';
+        removeRole.textContent = 'Rolü kaldır'; removeRole.addEventListener('click', () => {
+          if (!confirm(role.name + ' rolü kaldırılsın mı? Atanmış çalışan varsa işlem engellenir.')) return;
+          action(removeRole, async () => { await api('/roles/' + role.id, 'DELETE'); resetRoleForm(); await refreshRoles(); notify('Rol kaldırıldı.'); });
+        }); roleActions.append(edit, removeRole); cell(row, roleActions);
         body.append(row);
       }
       if (editingRoleId === null) renderRolePermissions();
@@ -1241,16 +1320,7 @@
         input.dataset.base = String(base.includes(permission.code));
         input.checked = selected.includes(permission.code);
         input.addEventListener('change', () => {
-          const prerequisite = { BRANCH_SALE_CREATE: 'BRANCH_STOCK_VIEW', BRANCH_STOCK_MANAGE: 'BRANCH_STOCK_VIEW',
-            ORDERS_CREATE: 'ORDERS_VIEW', STOCK_MANAGE: 'STOCK_VIEW', PRODUCTS_CREATE: 'PRODUCTS_VIEW',
-            PRODUCTS_EDIT: 'PRODUCTS_VIEW', PRODUCTS_DELETE: 'PRODUCTS_VIEW' };
-          if (input.checked && prerequisite[input.value]) {
-            body.querySelector('input[value="' + prerequisite[input.value] + '"]').checked = true;
-          } else if (!input.checked) {
-            for (const [dependent, required] of Object.entries(prerequisite)) {
-              if (required === input.value) body.querySelector('input[value="' + dependent + '"]').checked = false;
-            }
-          }
+          synchronizePermissionChoices(body, input);
         });
         label.append(input, document.createTextNode(permission.label));
         body.append(label);
@@ -1275,18 +1345,43 @@
     }
 
     async function refreshBranches() {
-      const branches = await api('/branches');
-      if (!isAdmin) return;
+      if (!can('BRANCHES_VIEW')) return;
+      const branches = await api('/branches?includeArchived=true');
+      if (!can('BRANCHES_VIEW')) return;
+      loadedBranches = branches;
       const table = $('branchRows');
       table.replaceChildren();
-      if (!branches.length) emptyRow(table, 'Henüz şube yok.', 1);
+      if (!branches.length) emptyRow(table, 'Henüz şube/depo yok.', 4);
       for (const branch of branches) {
         const row = document.createElement('tr');
         cell(row, branch.name);
+        cell(row, branch.kind === 'WAREHOUSE' ? 'Depo' : 'Şube');
+        cell(row, branch.active === false ? 'Arşivlenmiş' : 'Etkin');
+        const actions = document.createElement('div'); actions.className = 'actions';
+        if (can('BRANCHES_MANAGE')) {
+          const edit = document.createElement('button'); edit.type = 'button'; edit.className = 'secondary'; edit.textContent = 'Düzenle';
+          edit.addEventListener('click', () => {
+            editingBranch = branch; $('branchName').value = branch.name; $('branchKind').value = branch.kind || 'BRANCH';
+            $('branch-create-heading').textContent = 'Şube / depoyu düzenle'; $('cancelBranchEdit').hidden = false;
+            location.hash = '#branch-create'; showView();
+          });
+          const archive = document.createElement('button'); archive.type = 'button'; archive.className = 'secondary';
+          archive.textContent = branch.active === false ? 'Yeniden aç' : 'Arşivle';
+          archive.addEventListener('click', () => {
+            if (branch.active !== false && !confirm(branch.name + ' arşivlensin mi? Geçmiş kayıtları korunur.')) return;
+            action(archive, async () => {
+              await api('/branches/' + branch.id, 'PUT', { name: branch.name, kind: branch.kind || 'BRANCH',
+                active: branch.active === false, version: branch.version });
+              await refreshBranches(); notify(branch.active === false ? 'Şube/depo yeniden açıldı.' : 'Şube/depo arşivlendi.');
+            });
+          }); actions.append(edit, archive);
+        }
+        cell(row, actions.childNodes.length ? actions : 'Görüntüleme');
         table.append(row);
       }
-      setOptions('inviteBranch', 'Şube seç', branches, branch => branch.name);
-      setOptions('inventoryBranch', 'Şube seç', branches, branch => branch.name);
+      const active = branches.filter(b => b.active !== false);
+      setOptions('inviteBranch', 'Şube / depo seç', active, branch => branch.name);
+      setOptions('inventoryBranch', 'Şube / depo seç', active, branch => branch.name);
       updateInviteBranch();
     }
 
@@ -1441,7 +1536,7 @@
           if (!isAdmin && !permissions.size) throw new Error('Hesabına henüz yetki tanımlanmamış. Yöneticiyle görüş.');
           if (isAdmin) await Promise.all([refresh(), refreshBranches(), refreshRoles()]);
           else if (isBranchEmployee) await refreshEmployeeStock();
-          else await refresh();
+          else await Promise.all([refresh(), can('BRANCHES_VIEW') ? refreshBranches() : Promise.resolve()]);
         } catch (error) {
           token = '';
           isAdmin = false;
@@ -1473,6 +1568,7 @@
       employeeRoles = [];
       permissionOptions = [];
       closeProductEditor();
+      closeEmployeeProfile(); loadedBranches = []; editingBranch = null;
       catalogProducts = []; tagSuggestions = []; catalogFilters = []; movementHistory = []; movementRequest++;
       $('productSearch').value = ''; $('activeTagFilters').replaceChildren(); $('movementRows').replaceChildren();
       $('movementEditor').hidden = true; $('movementForm').reset();
@@ -1524,14 +1620,37 @@
     $('branchForm').addEventListener('submit', event => {
       event.preventDefault();
       action(event.submitter, async () => {
-        const branch = await api('/branches', 'POST', { name: $('branchName').value.trim() });
-        if (!isAdmin) return;
+        const request = { name: $('branchName').value.trim(), kind: $('branchKind').value };
+        const wasEditing = editingBranch !== null;
+        if (wasEditing) { request.version = editingBranch.version; request.active = editingBranch.active !== false; }
+        const branch = await api(wasEditing ? '/branches/' + editingBranch.id : '/branches', wasEditing ? 'PUT' : 'POST', request);
+        if (!can('BRANCHES_MANAGE')) return;
         $('branchForm').reset();
+        editingBranch = null; $('cancelBranchEdit').hidden = true; $('branch-create-heading').textContent = 'Şube / depo ekle';
         await refreshBranches();
-        if (!isAdmin) return;
+        if (!can('BRANCHES_MANAGE')) return;
         $('inviteBranch').value = String(branch.id);
-        notify('Şube kaydedildi.');
+        location.hash = '#branch-list'; notify('Şube/depo kaydedildi.');
       });
+    });
+
+    $('cancelBranchEdit').addEventListener('click', () => {
+      editingBranch = null; $('branchForm').reset(); $('cancelBranchEdit').hidden = true;
+      $('branch-create-heading').textContent = 'Şube / depo ekle'; location.hash = '#branch-list';
+    });
+    $('profileRole').addEventListener('change', updateProfileBranch);
+    $('cancelEmployeeProfile').addEventListener('click', closeEmployeeProfile);
+    $('employeeProfileForm').addEventListener('submit', event => {
+      event.preventDefault(); if (!editingProfile) return;
+      const employee = editingProfile; $('employeeProfileError').textContent = '';
+      action(event.submitter, async () => {
+        const role = profileRoleSelection();
+        await api('/auth/accounts/' + employee.id, 'PUT', { revision: employee.revision, username: $('profileUsername').value.trim(),
+          fullName: $('profileFullName').value.trim() || null, role: role.role, employeeRoleId: role.employeeRoleId,
+          branchId: role.role === 'BRANCH_EMPLOYEE' ? Number($('profileBranch').value) : null,
+          enabled: $('profileEnabled').value === 'true' });
+        closeEmployeeProfile(); await refreshEmployees(); notify('Çalışan bilgileri güncellendi.');
+      }, error => { $('employeeProfileError').textContent = error.message; });
     });
 
     $('inventoryBranch').addEventListener('change', () => {
@@ -1653,6 +1772,7 @@
         if (!choices.some(input => input.checked)) throw new Error('Çalışana en az bir yetki bırak.');
         const request = {
           username: $('inviteUsername').value,
+          fullName: $('inviteFullName').value.trim() || null,
           role: scope,
           excludedPermissions: choices.filter(input => !input.checked && input.dataset.base === 'true').map(input => input.value),
           addedPermissions: choices.filter(input => input.checked && input.dataset.base === 'false').map(input => input.value)

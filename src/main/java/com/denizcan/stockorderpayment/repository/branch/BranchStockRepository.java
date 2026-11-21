@@ -15,6 +15,7 @@ public interface BranchStockRepository extends JpaRepository<BranchStock, Long> 
 
     @EntityGraph(attributePaths = "product")
     List<BranchStock> findAllByBranchIdOrderByProductNameAsc(Long branchId);
+    boolean existsByBranchIdAndQuantityGreaterThan(Long branchId, int quantity);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select s from BranchStock s where s.branch.id = :branchId and s.product.id = :productId")

@@ -51,14 +51,20 @@ public class AccountService {
     @Transactional
     public String invite(String username, Role requestedRole, Long branchId, Long employeeRoleId,
                          Set<Permission> excludedPermissions, Set<Permission> addedPermissions) {
+        return invite(username, requestedRole, branchId, employeeRoleId, excludedPermissions, addedPermissions, null);
+    }
+
+    @Transactional
+    public String invite(String username, Role requestedRole, Long branchId, Long employeeRoleId,
+                         Set<Permission> excludedPermissions, Set<Permission> addedPermissions, String fullName) {
         validateUsername(username);
+        validateFullName(fullName);
         EmployeeRole employeeRole = employeeRoleId == null ? null : employeeRoles.findById(employeeRoleId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Seçilen rol bulunamadı."));
         if (employeeRole != null && requestedRole != null && employeeRole.getScope() != requestedRole) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rol ile çalışma alanı uyuşmuyor.");
         }
         Role role = employeeRole != null ? employeeRole.getScope() : requestedRole == null ? Role.USER : requestedRole;
-        Branch branch = branchForInvitation(role, branchId);
         Set<Permission> exclusions = excludedPermissions == null ? Set.of() : excludedPermissions;
         Set<Permission> basePermissions = employeeRole == null
                 ? Permission.defaultsFor(role) : employeeRole.getPermissions();
@@ -73,8 +79,10 @@ public class AccountService {
                 || user.getRole() == Role.ADMIN)) {
             throw accountExists();
         }
+        Branch branch = branchForInvitation(role, branchId);
         user.prepareActivation(hash(token), Instant.now().plus(Duration.ofHours(24)), role, branch);
         user.setEmployeeRole(employeeRole);
+        user.setFullName(fullName);
         user.setExcludedPermissions(exclusions);
         user.setAddedPermissions(additions);
         try {
@@ -88,6 +96,39 @@ public class AccountService {
     @Transactional(readOnly = true)
     public List<EmployeeAccount> employees() {
         return users.findByRoleNotOrderByUsernameAsc(Role.ADMIN).stream().map(EmployeeAccount::from).toList();
+    }
+
+    @Transactional
+    public EmployeeAccount updateAccount(Long id, String revision, String username, String fullName,
+                                         Role requestedRole, Long branchId, Long employeeRoleId, boolean enabled) {
+        validateUsername(username);
+        validateFullName(fullName);
+        User user = users.findByIdForUpdate(id).orElseThrow(() ->
+                new ResponseStatusException(HttpStatus.NOT_FOUND, "Çalışan bulunamadı."));
+        if (user.getRole() == Role.ADMIN || requestedRole == Role.ADMIN) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bu ekrandan yönetici hesabı değiştirilemez veya oluşturulamaz.");
+        }
+        if (!EmployeeAccount.from(user).revision().equals(revision)) throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "Çalışan bilgileri değişmiş. Listeyi yenileyip tekrar düzenle.");
+        if (users.existsByUsernameAndIdNot(username, id)) throw accountExists();
+        if (enabled && user.getActivationTokenHash() != null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Çalışanın önce parola bağlantısıyla hesabını etkinleştirmesi gerekiyor.");
+        EmployeeRole employeeRole = employeeRoleId == null ? null : employeeRoles.findById(employeeRoleId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Seçilen rol bulunamadı."));
+        Role scope = employeeRole == null ? requestedRole : employeeRole.getScope();
+        if (scope == null || scope == Role.ADMIN || employeeRole != null && requestedRole != null && scope != requestedRole)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rol ile çalışma alanı uyuşmuyor.");
+        Branch branch = branchForInvitation(scope, branchId);
+        Set<Permission> available = Permission.availableFor(scope);
+        Set<Permission> additions = new HashSet<>(user.getAddedPermissions()); additions.retainAll(available);
+        Set<Permission> exclusions = new HashSet<>(user.getExcludedPermissions()); exclusions.retainAll(available);
+        Set<Permission> effective = new HashSet<>(employeeRole == null ? Permission.defaultsFor(scope) : employeeRole.getPermissions());
+        effective.addAll(additions); effective.removeAll(exclusions);
+        validateEffectivePermissions(effective);
+        user.reviseAccount(username, fullName, scope, branch, employeeRole, enabled);
+        user.setAddedPermissions(additions); user.setExcludedPermissions(exclusions);
+        try { users.flush(); } catch (DataIntegrityViolationException exception) { throw accountExists(); }
+        return EmployeeAccount.from(user);
     }
 
     @Transactional
@@ -126,7 +167,8 @@ public class AccountService {
         return EmployeeAccount.from(user);
     }
 
-    public record EmployeeAccount(Long id, String username, String roleName, Role scope, String branchName,
+    public record EmployeeAccount(Long id, String username, String fullName, String roleName, Long employeeRoleId,
+                                  Role scope, String branchName, Long branchId, String status,
                                   boolean enabled, Set<Permission> basePermissions, Set<Permission> permissions,
                                   String revision) {
         static EmployeeAccount from(User user) {
@@ -136,13 +178,16 @@ public class AccountService {
             String roleName = role == null
                     ? user.getRole() == Role.BRANCH_EMPLOYEE ? "Şube çalışanı" : "Merkez çalışanı"
                     : role.getName();
-            String revision = hash(user.getId() + "|" + user.getRole() + "|"
+            String revision = hash(user.getId() + "|" + user.getUsername() + "|" + user.getFullName() + "|"
+                    + user.getSessionVersion() + "|" + (user.getBranch() == null ? "" : user.getBranch().getId()) + "|" + user.getRole() + "|"
                     + (role == null ? "" : role.getId()) + "|" + user.isEnabled() + "|"
                     + base.stream().sorted().toList() + "|"
                     + user.getAddedPermissions().stream().sorted().toList() + "|"
                     + user.getExcludedPermissions().stream().sorted().toList());
-            return new EmployeeAccount(user.getId(), user.getUsername(), roleName, user.getRole(),
-                    user.getBranch() == null ? null : user.getBranch().getName(), user.isEnabled(),
+            return new EmployeeAccount(user.getId(), user.getUsername(), user.getFullName(), roleName,
+                    role == null ? null : role.getId(), user.getRole(),
+                    user.getBranch() == null ? null : user.getBranch().getName(), user.getBranch() == null ? null : user.getBranch().getId(),
+                    user.isEnabled() ? "ACTIVE" : user.getActivationTokenHash() != null ? "PENDING" : "DISABLED", user.isEnabled(),
                     base, Set.copyOf(Permission.forUser(user)), revision);
         }
     }
@@ -206,7 +251,7 @@ public class AccountService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Merkez çalışanı veya şube çalışanı seç. Şube çalışanına bir şube ata.");
         }
-        return branches.findById(branchId).orElseThrow(() -> new ResponseStatusException(
+        return branches.findForUpdate(branchId).filter(Branch::isActive).orElseThrow(() -> new ResponseStatusException(
                 HttpStatus.BAD_REQUEST, "Seçilen şube bulunamadı."));
     }
 
@@ -215,6 +260,11 @@ public class AccountService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Kullanıcı adı 3–64 karakter olmalı. Harf, rakam, nokta, tire veya alt çizgi kullan.");
         }
+    }
+
+    private static void validateFullName(String fullName) {
+        if (fullName != null && fullName.length() > 100)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Çalışan adı en fazla 100 karakter olabilir.");
     }
 
     private static void validatePassword(String password) {
@@ -236,7 +286,7 @@ public class AccountService {
     private static String hash(String token) {
         try {
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
-                    .digest(token.getBytes(StandardCharsets.US_ASCII)));
+                    .digest(token.getBytes(StandardCharsets.UTF_8)));
         } catch (NoSuchAlgorithmException exception) {
             throw new IllegalStateException("SHA-256 unavailable", exception);
         }

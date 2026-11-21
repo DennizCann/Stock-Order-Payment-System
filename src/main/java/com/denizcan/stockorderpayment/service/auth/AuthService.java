@@ -34,7 +34,7 @@ public class AuthService {
         User user = userRepository.findByUsername(request.username())
                 .orElseThrow(InvalidCredentialsException::new);
 
-        String token = jwtService.generateToken(user.getUsername(), user.getRole().name());
+        String token = jwtService.generateToken(user.getId(), user.getUsername(), user.getRole().name(), user.getSessionVersion());
         String branchName = user.getBranch() == null ? null : user.getBranch().getName();
         String roleName = user.getEmployeeRole() == null ? user.getRole().name() : user.getEmployeeRole().getName();
         return AuthResponse.bearer(token, user.getUsername(), user.getRole().name(), branchName,

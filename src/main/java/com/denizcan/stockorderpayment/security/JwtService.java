@@ -20,13 +20,15 @@ public class JwtService {
         this.secretKey = Keys.hmacShaKeyFor(jwtProperties.secret().getBytes(StandardCharsets.UTF_8));
     }
 
-    public String generateToken(String username, String role) {
+    public String generateToken(Long userId, String username, String role, long sessionVersion) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + jwtProperties.expirationMs());
 
         return Jwts.builder()
                 .subject(username)
                 .claim("role", role)
+                .claim("userId", userId)
+                .claim("sessionVersion", sessionVersion)
                 .issuedAt(now)
                 .expiration(expiry)
                 .signWith(secretKey)
@@ -41,9 +43,13 @@ public class JwtService {
         return parseClaims(token).get("role", String.class);
     }
 
-    public boolean isTokenValid(String token, String expectedUsername) {
+    public boolean isTokenValid(String token, Long userId, String expectedUsername, long sessionVersion) {
         Claims claims = parseClaims(token);
-        return claims.getSubject().equals(expectedUsername) && claims.getExpiration().after(new Date());
+        Number identity = claims.get("userId", Number.class);
+        Number version = claims.get("sessionVersion", Number.class);
+        return identity != null && version != null && identity.longValue() == userId
+                && version.longValue() == sessionVersion && claims.getSubject().equals(expectedUsername)
+                && claims.getExpiration().after(new Date());
     }
 
     private Claims parseClaims(String token) {

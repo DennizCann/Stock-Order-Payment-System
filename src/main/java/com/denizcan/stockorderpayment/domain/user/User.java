@@ -36,6 +36,31 @@ public class User {
     @Column(nullable = false, unique = true, length = 64)
     private String username;
 
+    @Column(name = "full_name", length = 100)
+    private String fullName;
+
+    @org.hibernate.annotations.ColumnDefault("0")
+    @Column(name = "session_version", nullable = false)
+    private long sessionVersion;
+
+    public void reviseAccount(String username, String fullName, Role role, Branch branch,
+                              EmployeeRole employeeRole, boolean enabled) {
+        if (!this.username.equals(username) || this.role != role || this.enabled != enabled
+                || !java.util.Objects.equals(this.branch == null ? null : this.branch.getId(), branch == null ? null : branch.getId())) {
+            sessionVersion++;
+        }
+        this.username = username;
+        this.fullName = fullName == null || fullName.isBlank() ? null : fullName.strip();
+        this.role = role;
+        this.branch = branch;
+        this.employeeRole = employeeRole;
+        this.enabled = enabled;
+    }
+
+    public void setFullName(String fullName) {
+        this.fullName = fullName == null || fullName.isBlank() ? null : fullName.strip();
+    }
+
     @Setter
     @Column(nullable = false)
     private String password;

@@ -34,6 +34,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class EmployeeRoleController {
     private final EmployeeRoleRepository roles;
+    private final com.denizcan.stockorderpayment.repository.user.UserRepository users;
 
     @GetMapping
     @Transactional(readOnly = true)
@@ -77,6 +78,17 @@ public class EmployeeRoleController {
         } catch (DataIntegrityViolationException exception) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Bu rol adı zaten kullanımda.");
         }
+    }
+
+    @org.springframework.web.bind.annotation.DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Transactional
+    public void delete(@PathVariable Long id) {
+        EmployeeRole role = roles.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Rol bulunamadı."));
+        if (users.existsByEmployeeRoleId(id)) throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "Bu rol çalışanlara atanmış. Önce çalışanları başka bir role geçir.");
+        try { roles.delete(role); roles.flush(); }
+        catch (DataIntegrityViolationException exception) { throw new ResponseStatusException(HttpStatus.CONFLICT, "Rol kullanımda. Listeyi yenile."); }
     }
 
     private void validatePermissions(RoleRequest request) {

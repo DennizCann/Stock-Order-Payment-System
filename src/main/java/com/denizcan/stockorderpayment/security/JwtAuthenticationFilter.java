@@ -22,6 +22,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final CustomUserDetailsService userDetailsService;
+    private final com.denizcan.stockorderpayment.repository.user.UserRepository users;
 
     @Override
     protected void doFilterInternal(
@@ -43,7 +44,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
-                if (userDetails.isEnabled() && jwtService.isTokenValid(token, userDetails.getUsername())) {
+                var user = users.findByUsername(username).orElseThrow();
+                if (userDetails.isEnabled() && jwtService.isTokenValid(token, user.getId(), userDetails.getUsername(), user.getSessionVersion())) {
                     UsernamePasswordAuthenticationToken authentication =
                             new UsernamePasswordAuthenticationToken(
                                     userDetails,

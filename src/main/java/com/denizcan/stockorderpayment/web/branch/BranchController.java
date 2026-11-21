@@ -36,32 +36,37 @@ public class BranchController {
 
     private final BranchRepository branches;
     private final BranchInventoryService inventory;
+    private final com.denizcan.stockorderpayment.service.branch.BranchManagementService management;
 
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
-    public List<BranchResponse> list() {
-        return branches.findAllByOrderByNameAsc().stream().map(BranchResponse::from).toList();
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'BRANCHES_VIEW')")
+    public List<com.denizcan.stockorderpayment.service.branch.BranchManagementService.BranchInfo> list(
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "false") boolean includeArchived) {
+        return management.list(includeArchived);
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'BRANCHES_MANAGE')")
     @ResponseStatus(HttpStatus.CREATED)
-    public BranchResponse create(@Valid @RequestBody BranchRequest request) {
-        try {
-            return BranchResponse.from(branches.saveAndFlush(new Branch(request.name().strip())));
-        } catch (DataIntegrityViolationException exception) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Bu şube adı zaten kullanımda.", exception);
-        }
+    public com.denizcan.stockorderpayment.service.branch.BranchManagementService.BranchInfo create(@Valid @RequestBody BranchRequest request) {
+        return management.create(request.name(), request.kind());
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'BRANCHES_MANAGE')")
+    public com.denizcan.stockorderpayment.service.branch.BranchManagementService.BranchInfo update(@PathVariable Long id,
+            @Valid @RequestBody UpdateBranchRequest request) {
+        return management.update(id, request.version(), request.name(), request.kind(), request.active());
     }
 
     @GetMapping("/{branchId}/stock")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'STOCK_VIEW')")
     public List<StockLine> stockAt(@PathVariable Long branchId) {
         return inventory.stockAt(branchId);
     }
 
     @PutMapping("/{branchId}/stock/{productId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'STOCK_MANAGE')")
     public StockLine setQuantity(@PathVariable Long branchId, @PathVariable Long productId,
                                  @Valid @RequestBody StockQuantityRequest request, Principal principal) {
         return inventory.setQuantity(branchId, productId, request.quantity(), principal.getName());
@@ -88,7 +93,10 @@ public class BranchController {
     public record SaleRequest(@NotNull @Positive Long productId, @NotNull @Positive Integer quantity,
                               @NotNull UUID saleId) {}
 
-    public record BranchRequest(@NotBlank @Size(max = 100) String name) {}
+    public record BranchRequest(@NotBlank @Size(max = 100) String name, Branch.Kind kind) {}
+    public record UpdateBranchRequest(@NotNull @jakarta.validation.constraints.PositiveOrZero Long version,
+                                      @NotBlank @Size(max = 100) String name, @NotNull Branch.Kind kind,
+                                      @NotNull Boolean active) {}
 
     public record BranchResponse(Long id, String name) {
         static BranchResponse from(Branch branch) {

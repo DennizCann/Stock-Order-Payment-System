@@ -51,6 +51,7 @@ public class BranchInventoryService {
         User actor = activeUser(username);
         // Lock the branch even when this product has no stock row yet.
         Branch branch = branches.findForUpdate(branchId).orElseThrow(BranchInventoryService::branchNotFound);
+        requireActive(branch);
         BranchStock line = stock.findForUpdate(branchId, productId)
                 .orElseGet(() -> new BranchStock(branch, products.findById(productId).orElseThrow(() ->
                         new ResponseStatusException(HttpStatus.NOT_FOUND, "Ürün bulunamadı.")), 0));
@@ -104,6 +105,7 @@ public class BranchInventoryService {
                      String reason, String note, String username) {
         User actor = activeUser(username);
         Branch branch = branches.findForUpdate(branchId).orElseThrow(BranchInventoryService::branchNotFound);
+        requireActive(branch);
         BranchStock line = stock.findForUpdate(branchId, productId).orElseGet(() ->
                 new BranchStock(branch, products.findById(productId).orElseThrow(() ->
                         new ResponseStatusException(HttpStatus.NOT_FOUND, "Ürün bulunamadı.")), 0));
@@ -124,6 +126,10 @@ public class BranchInventoryService {
                 "Ürün arşivlenmiş veya stok toplamı geçersiz.");
     }
 
+    private static void requireActive(Branch branch) {
+        if (!branch.isActive()) throw new ResponseStatusException(HttpStatus.CONFLICT, "Arşivlenmiş şube/depo için stok değiştirilemez.");
+    }
+
     private List<StockLine> stockLines(Long branchId) {
         return stock.findAllByBranchIdOrderByProductNameAsc(branchId).stream().map(StockLine::from).toList();
     }
@@ -135,7 +141,7 @@ public class BranchInventoryService {
 
     private User employee(String username) {
         User actor = activeUser(username);
-        if (actor.getRole() != Role.BRANCH_EMPLOYEE || actor.getBranch() == null) {
+        if (actor.getRole() != Role.BRANCH_EMPLOYEE || actor.getBranch() == null || !actor.getBranch().isActive()) {
             throw new AccessDeniedException("Şubeye atanmış bir çalışan hesabı gerekiyor.");
         }
         return actor;

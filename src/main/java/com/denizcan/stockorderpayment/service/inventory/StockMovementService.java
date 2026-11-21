@@ -79,7 +79,7 @@ public class StockMovementService {
         }
         List<Location> locations = new ArrayList<>();
         locations.add(new Location(null, "Merkez"));
-        branches.findAllByOrderByNameAsc().forEach(b -> locations.add(new Location(b.getId(), b.getName())));
+        branches.findAllByOrderByNameAsc().stream().filter(b -> b.isActive()).forEach(b -> locations.add(new Location(b.getId(), b.getName())));
         return locations;
     }
 

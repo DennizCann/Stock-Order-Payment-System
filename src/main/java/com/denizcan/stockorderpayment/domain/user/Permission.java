@@ -14,7 +14,9 @@ public enum Permission {
     PRODUCTS_EDIT("Ürün ve etiketlerini düzenle", Role.USER),
     PRODUCTS_DELETE("Ürün kaldır", Role.USER),
     STOCK_MANAGE("Merkez ve şubelerde stok hareketi oluştur", Role.USER),
-    BRANCH_STOCK_MANAGE("Kendi şubesinde stok giriş/çıkışı oluştur", Role.BRANCH_EMPLOYEE);
+    BRANCH_STOCK_MANAGE("Kendi şubesinde stok giriş/çıkışı oluştur", Role.BRANCH_EMPLOYEE),
+    BRANCHES_VIEW("Şubeleri ve depoları görüntüle", Role.USER),
+    BRANCHES_MANAGE("Şube ve depo ekle, düzenle, arşivle", Role.USER);
 
     private final String label;
     private final Role scope;
@@ -62,6 +64,7 @@ public enum Permission {
         if (!effective.contains(PRODUCTS_VIEW)) effective.removeAll(EnumSet.of(PRODUCTS_CREATE, PRODUCTS_EDIT, PRODUCTS_DELETE));
         if (!effective.contains(STOCK_VIEW)) effective.remove(STOCK_MANAGE);
         if (!effective.contains(BRANCH_STOCK_VIEW)) effective.remove(BRANCH_STOCK_MANAGE);
+        if (!effective.contains(BRANCHES_VIEW)) effective.remove(BRANCHES_MANAGE);
         return effective;
     }
 
@@ -69,6 +72,7 @@ public enum Permission {
         return (!selected.contains(BRANCH_SALE_CREATE) && !selected.contains(BRANCH_STOCK_MANAGE) || selected.contains(BRANCH_STOCK_VIEW))
                 && (!selected.contains(ORDERS_CREATE) || selected.contains(ORDERS_VIEW))
                 && (!selected.contains(STOCK_MANAGE) || selected.contains(STOCK_VIEW))
+                && (!selected.contains(BRANCHES_MANAGE) || selected.contains(BRANCHES_VIEW))
                 && (java.util.Collections.disjoint(selected, EnumSet.of(PRODUCTS_CREATE, PRODUCTS_EDIT, PRODUCTS_DELETE)) || selected.contains(PRODUCTS_VIEW));
     }
 }

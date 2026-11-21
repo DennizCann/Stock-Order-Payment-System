@@ -1,22 +1,27 @@
 # Stock-Order-Payment System
 
-A portfolio backend built with Java 21 and Spring Boot 3.4 to model product, stock, inventory, order, and payment workflows.
+A Java 21 and Spring Boot 3.4 web application for company product, stock, location, employee and order operations.
 
 > **Work in progress:** The central operations panel, order REST API, safe stock reservations,
 > channel-order idempotency, and five independently running sales-channel simulators are implemented.
 > Shipment/cargo simulation and payment completion are planned. See [the local demo guide](docs/DEMO.md).
 
+The company-product requirements, verified deliveries and remaining gaps are tracked in
+[the product roadmap](docs/PRODUCT_ROADMAP.md). Marketplace traffic currently uses local simulators;
+this is not yet a completed live-marketplace integration or a production-ready release.
+
 ## Current status
 
 | Module | Status | Details |
 |---|---|---|
-| Authentication | Done | JWT login with `ADMIN` and `USER` roles |
-| Product | Done | Create, list, and get by id |
+| Authentication and employees | Implemented | Invitations, configurable roles, personal permission exceptions, editable profiles/status, account-bound revocable JWT sessions |
+| Branches and warehouses | Implemented | Delegated viewing/management, type/name editing, archive/restore safeguards |
+| Product | Implemented | Create, edit, archive, name/value tags, filtering and consistent total quantity |
 | Stock | Done | Create, query, adjust, stock-in, and stock-out |
 | Inventory history | Done | Traceable transaction log per product |
 | Order | Done for initial flow | Authenticated create/read, owner isolation, concurrent stock reservations |
 | Channel integration | Demo implemented | SKU-based import, duplicate detection, versioned stock snapshots, manual synchronization |
-| Operations panel | Initial version | Product/stock entry, channel synchronization, aggregate order list |
+| Operations panel | Implemented for current workflows | Five landing sections with separate task screens and permission-aware navigation |
 | External simulators | Demo implemented | Separate Trendyol, Hepsiburada, n11, webstore and branch processes |
 | Cargo | Planned | Separate carrier simulator, shipment creation and tracking |
 | Payment | Planned | Provider simulation and asynchronous callback flow |
