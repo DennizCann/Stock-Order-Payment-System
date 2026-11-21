@@ -43,6 +43,8 @@ public class SecurityConfig {
                         ).permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/login", "/api/v1/auth/activate").permitAll()
                         .requestMatchers("/api/v1/roles/**", "/api/v1/roles").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET,"/api/v1/channel-stock/**").hasAnyAuthority("ROLE_ADMIN","CHANNELS_VIEW")
+                        .requestMatchers("/api/v1/channel-stock/**").hasAnyAuthority("ROLE_ADMIN","CHANNELS_MANAGE")
                         .requestMatchers(HttpMethod.GET, "/api/v1/branches/me/stock").hasAuthority("BRANCH_STOCK_VIEW")
                         .requestMatchers(HttpMethod.POST, "/api/v1/branches/me/sales").hasAuthority("BRANCH_SALE_CREATE")
                         .requestMatchers("/api/v1/branches/me/**").denyAll()

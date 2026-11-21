@@ -171,6 +171,9 @@ The suite covers service unit tests, controller/authentication integration tests
 - [x] Idempotent channel import and payload conflict detection
 - [x] Central operations panel and five sales-channel simulator applications
 - [x] Versioned stock synchronization and local HTTP demo verification
+- [x] Editable accounts, delegated branch/warehouse management and session revocation
+- [x] Atomic multi-product receipts, issues and internal transfers
+- [x] Configurable channel stock caps and durable Trendyol quantity publication (contract-tested; no live seller acceptance yet)
 - [ ] Automatic polling, durable retries and provider-specific adapters
 - [ ] Cargo simulator, shipment lifecycle and tracking
 - [ ] Payment provider simulation and asynchronous callback
@@ -178,6 +181,9 @@ The suite covers service unit tests, controller/authentication integration tests
 - [ ] Optional Redis/Kafka integration
 
 Progress details: [TICKETS.md](TICKETS.md)
+
+Current company-product progress: [PRODUCT_ROADMAP.md](docs/PRODUCT_ROADMAP.md).
+First real-provider stock adapter setup and limits: [TRENDYOL_STOCK.md](docs/TRENDYOL_STOCK.md).
 
 ## Demo credentials
 

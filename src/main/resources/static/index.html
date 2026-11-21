@@ -314,6 +314,7 @@
           <div class="hero"><div><h1 id="sales-home-title">Satış Kanalları</h1><p class="muted">Siparişleri takip et ve satış kanallarını yönet.</p></div></div>
           <div class="section-menu">
             <a href="#channel-connections" data-destination="channel-connections" class="card"><svg class="icon" aria-hidden="true"><use href="#icon-channels"/></svg><strong>Satış kanalları</strong><p>Kanal bağlantılarını aç, siparişleri al ve stokları eşitle.</p><span class="menu-open">Kanalları aç →</span></a>
+            <a href="#channel-stock" data-destination="channel-stock" class="card"><svg class="icon" aria-hidden="true"><use href="#icon-box"/></svg><strong>Satışa açılacak stok</strong><p>Trendyol ürünlerini eşleştir, stok sınırlarını belirle ve gönderimleri izle.</p><span class="menu-open">Stok ayarlarını aç →</span></a>
             <a href="#orders" data-destination="orders" class="card"><svg class="icon" aria-hidden="true"><use href="#icon-order"/></svg><strong>Siparişler</strong><p>Satış kanallarından gelen siparişleri ve durumlarını görüntüle.</p><span class="menu-open">Siparişleri aç →</span></a>
           </div>
         </section>
@@ -332,6 +333,25 @@
               </table>
             </div>
           </section>
+        </section>
+
+        <section id="channel-stock" data-view data-parent="channels" hidden aria-labelledby="channel-stock-title">
+          <a class="section-back" href="#channels">← Satış Kanalları</a>
+          <div class="hero"><div><h1 id="channel-stock-title">Satışa açılacak stok</h1><p class="muted">İlk bağlantı: Trendyol · yalnızca merkezdeki satılabilir stok kullanılır.</p></div><button class="secondary" id="refreshChannelStock" type="button">Yenile</button></div>
+          <section class="card"><div class="card-head"><h2>Bağlantı ve gönderim</h2></div><div class="section" style="padding:0 24px 24px"><p id="channelConnectionState" role="status"></p><p class="muted">Siparişlere ayrılan adet ve güvenlik payı düşülür; belirlediğin üst sınır aşılmaz. Şube stokları bu sayıya katılmaz. Bu ekran mevcut mağaza ürünlerinin stoklarını günceller; ürün veya sipariş aktarmaz.</p><button id="publishChannelStock" class="primary" type="button" hidden>Değişen stokları gönder</button></div></section>
+          <section class="card section account-form" id="channelPolicyEditor" hidden><header class="card-head"><h2>Ürün stok sınırı</h2></header>
+            <form id="channelPolicyForm" class="form-grid" style="padding:24px">
+              <label>Ürün<select id="channelPolicyProduct" required></select></label>
+              <label>Trendyol barkodu<input id="channelPolicyBarcode" required maxlength="40" autocomplete="off"><span class="muted">İç SKU yerine mağazadaki gerçek barkodu gir.</span></label>
+              <label>Satışa açılacak en fazla adet<input id="channelPolicyMaximum" type="number" min="0" max="20000" required value="0"></label>
+              <label>Merkezde saklanacak güvenlik payı<input id="channelPolicySafety" type="number" min="0" max="2147483647" required value="0"></label>
+              <label><input id="channelPolicyEnabled" type="checkbox">Bu ürünü satışa aç</label>
+              <p id="channelPolicyPreview" class="muted"></p>
+              <button type="submit" class="primary">Ayarı kaydet</button>
+            </form>
+          </section>
+          <section class="card section"><header class="card-head"><h2>Ürün eşleştirmeleri</h2></header><div id="channelPolicyList" style="padding:0 24px 24px"></div></section>
+          <section class="card section"><header class="card-head"><h2>Son stok gönderimleri</h2></header><div id="channelPublicationList" style="padding:0 24px 24px"></div></section>
         </section>
 
         <section id="channel-connections" data-view data-parent="channels" data-admin-view hidden aria-labelledby="channels-title">
@@ -728,6 +748,9 @@
     let operationTypes = [];
     let editingOperationType = null;
     let pendingInventoryOperation = null;
+    let channelPolicies = [];
+    let channelConnection = null;
+    let pendingPublicationId = null;
 
     function can(permission) {
       return isAdmin || permissions.has(permission);
@@ -737,7 +760,8 @@
       if (view.id === 'branches' || view.dataset.parent === 'branches')
         return can(view.id === 'branch-create' ? 'BRANCHES_MANAGE' : 'BRANCHES_VIEW');
       if (view.hasAttribute('data-admin-view')) return isAdmin;
-      if (view.id === 'channels') return isAdmin || !isBranchEmployee && can('ORDERS_VIEW');
+      if (view.id === 'channels') return isAdmin || !isBranchEmployee && (can('ORDERS_VIEW') || can('CHANNELS_VIEW'));
+      if (view.id === 'channel-stock') return can('CHANNELS_VIEW');
       if (view.id === 'products') return can('PRODUCTS_VIEW') || can('STOCK_VIEW') || can('BRANCH_STOCK_VIEW');
       if (view.id === 'product-editor') return can('PRODUCTS_CREATE') || can('PRODUCTS_EDIT');
       if (view.id === 'movement-create') return can('STOCK_MANAGE') || can('BRANCH_STOCK_MANAGE') || can('STOCK_TRANSFER');
@@ -764,7 +788,7 @@
     function synchronizePermissionChoices(body, input) {
       const prerequisite = { BRANCH_SALE_CREATE: 'BRANCH_STOCK_VIEW', BRANCH_STOCK_MANAGE: 'BRANCH_STOCK_VIEW',
         BRANCHES_MANAGE: 'BRANCHES_VIEW', ORDERS_CREATE: 'ORDERS_VIEW', STOCK_MANAGE: 'STOCK_VIEW',
-        STOCK_TRANSFER: 'STOCK_VIEW', STOCK_TYPES_MANAGE: 'STOCK_VIEW',
+        STOCK_TRANSFER: 'STOCK_VIEW', STOCK_TYPES_MANAGE: 'STOCK_VIEW', CHANNELS_MANAGE: 'CHANNELS_VIEW',
         PRODUCTS_CREATE: 'PRODUCTS_VIEW', PRODUCTS_EDIT: 'PRODUCTS_VIEW', PRODUCTS_DELETE: 'PRODUCTS_VIEW' };
       if (input.checked && prerequisite[input.value]) {
         const required = body.querySelector('input[value="' + prerequisite[input.value] + '"]');
@@ -985,6 +1009,7 @@
       }
       if (view.id === 'movements' || view.id === 'movement-create') refreshMovements().catch(error => notify(error.message, true));
       if (view.id === 'operation-types') refreshOperationTypes().catch(error => notify(error.message, true));
+      if (view.id === 'channel-stock') refreshChannelStock().catch(error => notify(error.message, true));
     }
 
     function readActivationLink() {
@@ -1662,6 +1687,8 @@
       $('movementEditor').hidden = true; $('movementForm').reset();
       $('additionalMovementItems').replaceChildren(); pendingInventoryOperation = null; movementProducts = []; operationTypes = [];
       resetOperationTypeForm();
+      channelPolicies = []; channelConnection = null; pendingPublicationId = null;
+      $('channelPolicyForm').reset(); $('channelPolicyList').replaceChildren(); $('channelPublicationList').replaceChildren();
       resetRoleForm();
       closeEmployeeEditor();
       employeeListRequest++;
@@ -1903,6 +1930,99 @@
       }, failure => { error.textContent = failure.message; });
     });
     readActivationLink();
+
+    function selectedChannelPolicy() {
+      return channelPolicies.find(p => p.productId === Number($('channelPolicyProduct').value));
+    }
+    function showChannelPolicy() {
+      const policy = selectedChannelPolicy();
+      $('channelPolicyBarcode').value = policy?.barcode || '';
+      $('channelPolicyBarcode').readOnly = Boolean(policy?.barcode);
+      $('channelPolicyMaximum').value = policy?.maximumQuantity ?? 0;
+      $('channelPolicySafety').value = policy?.safetyStock ?? 0;
+      $('channelPolicyEnabled').checked = Boolean(policy?.enabled);
+      $('channelPolicyEnabled').disabled = policy?.productActive === false;
+      previewChannelPolicy();
+    }
+    function previewChannelPolicy() {
+      const policy = selectedChannelPolicy();
+      const available = policy?.available || 0;
+      const quantity = $('channelPolicyEnabled').checked && policy?.productActive
+        ? Math.min(Number($('channelPolicyMaximum').value), Math.max(0, available - Number($('channelPolicySafety').value))) : 0;
+      $('channelPolicyPreview').textContent = 'Merkezde satılabilir: ' + available + ' · Bu ayarla gönderilecek: ' + quantity;
+    }
+    async function refreshChannelStock() {
+      if (!can('CHANNELS_VIEW')) return;
+      const session = token;
+      const [connection, policies, history] = await Promise.all([
+        api('/channel-stock/connection'), api('/channel-stock/policies'), api('/channel-stock/publications')
+      ]);
+      if (session !== token) return;
+      channelConnection = connection; channelPolicies = policies;
+      $('channelConnectionState').textContent = (connection.configured
+        ? 'Trendyol · ' + (connection.environment === 'PROD' ? 'CANLI MAĞAZA' : 'Test ortamı') + ' · Satıcı ' + connection.sellerId + '. ' : '') + connection.message;
+      $('publishChannelStock').hidden = !can('CHANNELS_MANAGE') || !connection.configured;
+      $('channelPolicyEditor').hidden = !can('CHANNELS_MANAGE');
+      const selected = $('channelPolicyProduct').value;
+      setOptions('channelPolicyProduct', 'Ürün seç', policies.map(p => ({...p, id:p.productId})), p => p.name + ' · ' + p.sku);
+      if (policies.some(p => String(p.productId) === selected)) $('channelPolicyProduct').value = selected;
+      showChannelPolicy();
+      $('channelPolicyList').replaceChildren();
+      for (const policy of policies.filter(p => p.barcode)) {
+        const item = document.createElement('p');
+        item.textContent = policy.name + ' · ' + policy.barcode + ' · Sınır: ' + policy.maximumQuantity
+          + ' · Güvenlik payı: ' + policy.safetyStock + ' · Gönderilecek: ' + policy.publishable
+          + (policy.enabled ? '' : ' · Satışa kapalı');
+        $('channelPolicyList').append(item);
+      }
+      if (!$('channelPolicyList').children.length) $('channelPolicyList').textContent = 'Henüz ürün eşleştirilmedi. Eşleştirilmemiş ürünler gerçek mağazaya gönderilmez.';
+      $('channelPublicationList').replaceChildren();
+      const states = {QUEUED:'Bekliyor', SENDING:'Gönderiliyor', SUBMITTED:'Sonuç bekleniyor', SUCCESS:'Onaylandı', FAILED:'Başarısız', UNCERTAIN:'Kontrol gerekiyor'};
+      for (const publication of history) {
+        const item = document.createElement('div'); item.className = 'section';
+        const title = document.createElement('strong'); title.textContent = states[publication.state] || publication.state;
+        const text = document.createElement('p'); text.textContent = publication.message;
+        const details = document.createElement('details'); const summary = document.createElement('summary');
+        summary.textContent = publication.lines.length + ' ürün · ' + dates.format(new Date(publication.createdAt)); details.append(summary);
+        for (const line of publication.lines) {const p = document.createElement('p');p.textContent = line.barcode + ' · ' + line.quantity + ' adet'; details.append(p);}
+        if (publication.batchId) {const p = document.createElement('p');p.textContent = 'Gönderim: ' + publication.batchId; p.style.overflowWrap='anywhere'; details.append(p);}
+        item.append(title, text, details);
+        if (can('CHANNELS_MANAGE') && ['QUEUED','SENDING','SUBMITTED'].includes(publication.state)) {
+          const check = document.createElement('button'); check.type='button';check.className='secondary';check.textContent='Sonucu kontrol et';
+          check.addEventListener('click', () => action(check, async () => {await api('/channel-stock/publications/' + publication.id + '/check', 'POST');await refreshChannelStock();}));item.append(check);
+        }
+        if (can('CHANNELS_MANAGE') && publication.state === 'UNCERTAIN') {
+          const resolve = document.createElement('button');resolve.type='button';resolve.className='secondary';resolve.textContent='Mağazada kontrol ettim';
+          resolve.addEventListener('click', () => action(resolve, async () => {
+            const note = prompt('Önce mağaza panelindeki sonucu kontrol et. Uzlaştırma notunu yaz (en fazla 80 karakter):');
+            if (!note?.trim()) return;
+            if (note.trim().length > 80) throw new Error('Not en fazla 80 karakter olabilir.');
+            await api('/channel-stock/publications/' + publication.id + '/resolve', 'POST', {note:note.trim(),providerVerified:true});
+            pendingPublicationId=null;await refreshChannelStock();
+          }));item.append(resolve);
+        }
+        $('channelPublicationList').append(item);
+      }
+      if (!history.length) $('channelPublicationList').textContent = 'Henüz gerçek bağlantıya gönderim yapılmadı.';
+    }
+    $('channelPolicyProduct').addEventListener('change', showChannelPolicy);
+    for (const id of ['channelPolicyMaximum','channelPolicySafety','channelPolicyEnabled']) $(id).addEventListener('input', previewChannelPolicy);
+    $('refreshChannelStock').addEventListener('click', event => action(event.currentTarget, refreshChannelStock));
+    $('channelPolicyForm').addEventListener('submit', event => {
+      event.preventDefault();action(event.submitter, async () => {
+        const policy=selectedChannelPolicy();if (!policy) throw new Error('Ürün seç.');
+        await api('/channel-stock/policies/' + policy.productId, 'PUT', {barcode:$('channelPolicyBarcode').value.trim(),
+          maximumQuantity:Number($('channelPolicyMaximum').value), safetyStock:Number($('channelPolicySafety').value),
+          enabled:$('channelPolicyEnabled').checked,version:policy.version});
+        pendingPublicationId=null;await refreshChannelStock();notify('Stok sınırı kaydedildi. Henüz mağazaya gönderilmedi.');
+      });
+    });
+    $('publishChannelStock').addEventListener('click', event => action(event.currentTarget, async () => {
+      if (!confirm((channelConnection?.environment === 'PROD' ? 'CANLI Trendyol mağazasındaki' : 'Trendyol test ortamındaki') + ' stoklar güncellensin mi? Satışa kapattığın eşleştirmeler sıfır gönderilir.')) return;
+      pendingPublicationId ||= newSaleId();
+      await api('/channel-stock/publications', 'POST', {requestId:pendingPublicationId});
+      pendingPublicationId=null;await refreshChannelStock();notify('Gönderim kaydı oluşturuldu. Kesin sonucu aşağıdan takip et.');
+    }));
 
     for (const button of document.querySelectorAll('[data-channel-action]')) {
       const path = button.dataset.channelAction;

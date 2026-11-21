@@ -20,12 +20,14 @@ public class ChannelConnectorService {
     private final StockRepository stocks;
     private final Map<OrderSource, RestClient> clients = new EnumMap<>(OrderSource.class);
     private final AtomicBoolean importInProgress = new AtomicBoolean();
+    private final boolean realTrendyolEnabled;
     public record InventorySnapshot(String sku, String name, BigDecimal price, int availableQuantity, long version) {}
     public record Result(OrderSource source, boolean success, int imported, String message) {}
 
     public ChannelConnectorService(ChannelOrderService orders, ProductRepository products,
                                     StockRepository stocks, Environment environment) {
         this.orders = orders; this.products = products; this.stocks = stocks;
+        realTrendyolEnabled=environment.getProperty("app.trendyol.enabled",Boolean.class,false);
         int port = 8081;
         for (OrderSource source : List.of(OrderSource.TRENDYOL, OrderSource.HEPSIBURADA, OrderSource.N11,
                 OrderSource.WEBSTORE, OrderSource.BRANCH)) {
@@ -42,6 +44,9 @@ public class ChannelConnectorService {
         List<InventorySnapshot> inventory = snapshot();
         List<Result> results = new ArrayList<>();
         clients.forEach((source, client) -> {
+            if(source==OrderSource.TRENDYOL&&realTrendyolEnabled) {
+                results.add(new Result(source,false,0,"Gerçek bağlantı açık. Stok gönderimini Kanal stok ayarları ekranından yap."));return;
+            }
             try {
                 client.put().uri("/api/inventory").body(inventory).retrieve().toBodilessEntity();
                 results.add(new Result(source, true, 0, "Stock snapshot synchronized"));
@@ -68,6 +73,9 @@ public class ChannelConnectorService {
     private List<Result> fetchPendingOrders(Long accountId) {
         List<Result> results = new ArrayList<>();
         clients.forEach((source, client) -> {
+            if(source==OrderSource.TRENDYOL&&realTrendyolEnabled) {
+                results.add(new Result(source,false,0,"Gerçek Trendyol sipariş aktarımı henüz bağlı değil; simülatör siparişi alınmadı."));return;
+            }
             int imported = 0;
             List<String> failures = new ArrayList<>();
             try {
