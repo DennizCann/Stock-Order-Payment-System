@@ -10,12 +10,13 @@ public record AuthResponse(
         String username,
         String role,
         @JsonInclude(JsonInclude.Include.NON_NULL) String branchName,
+        @JsonInclude(JsonInclude.Include.NON_NULL) Long branchId,
         String roleName,
         Set<Permission> permissions
 ) {
 
     public static AuthResponse bearer(String token, String username, String role, String branchName,
-                                      String roleName, Set<Permission> permissions) {
-        return new AuthResponse(token, "Bearer", username, role, branchName, roleName, permissions);
+                                      Long branchId,String roleName, Set<Permission> permissions) {
+        return new AuthResponse(token, "Bearer", username, role, branchName,branchId, roleName, permissions);
     }
 }

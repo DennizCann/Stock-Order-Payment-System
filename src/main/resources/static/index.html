@@ -207,6 +207,18 @@
     dialog.account-dialog::backdrop { background:rgba(16,30,53,.45); }
     .account-dialog .card-head { padding:0 0 16px; }
     .account-dialog input { min-width:0; }
+    .role-table { table-layout:fixed;white-space:normal; }
+    .role-table td { vertical-align:top;overflow-wrap:anywhere; }
+    .role-table th:first-child { width:25%; }
+    .role-table th:last-child { width:160px; }
+    .role-table td:last-child button { white-space:normal; }
+    @media(max-width:700px) {
+      .role-table,.role-table tbody,.role-table tr,.role-table td { display:block; }
+      .role-table thead { display:none; }
+      .role-table tr { padding:12px;border-top:1px solid #edf0f6; }
+      .role-table td { padding:8px;border:0; }
+      .role-table td::before { content:attr(data-label);display:block;color:var(--muted);font-size:.75rem;margin-bottom:4px; }
+    }
   </style>
 </head>
 <body>
@@ -559,12 +571,8 @@
             <header class="card-head"><div><h2 id="employee-role-title">Roller ve yetkiler</h2><p class="muted">Rolü kullanan çalışanların izinleri birlikte güncellenir.</p></div></header>
             <form id="employeeRoleForm" class="form-stack">
               <label>Rol adı<input id="employeeRoleName" maxlength="64" required></label>
-              <label>Çalışma alanı
-                <select id="employeeRoleScope">
-                  <option value="USER">Merkez</option>
-                  <option value="BRANCH_EMPLOYEE">Şube</option>
-                </select>
-              </label>
+              <input id="employeeRoleScope" type="hidden" value="USER">
+              <p class="muted">Rol adı ve izinleri şubeden bağımsızdır. Kendi şubesiyle ilgili izinler seçersen çalışanı eklerken bir şube/depo atanır.</p>
               <fieldset class="permission-options"><legend>Yetkiler</legend><div id="employeeRolePermissions"></div></fieldset>
               <div class="actions">
                 <button class="primary" type="submit">Rolü kaydet</button>
@@ -573,7 +581,7 @@
               <p class="muted">Yönetici hesabı tüm yönetim işlemlerine erişebilir. Çalışan rolleri için aşağıdaki izinleri seçebilirsin.</p>
             </form>
             <div class="table-wrap" role="region" aria-label="Çalışan rolleri" tabindex="0">
-              <table><thead><tr><th scope="col">Rol</th><th scope="col">Çalışma alanı</th><th scope="col">Yetkiler</th><th scope="col">İşlem</th></tr></thead><tbody id="employeeRoleRows"></tbody></table>
+              <table class="role-table"><thead><tr><th scope="col">Rol</th><th scope="col">Yetkiler</th><th scope="col">İşlem</th></tr></thead><tbody id="employeeRoleRows"></tbody></table>
             </div>
           </section>
           <section class="card account-form" aria-labelledby="invite-title">
@@ -754,6 +762,9 @@
     let token = '';
     let isAdmin = false;
     let isBranchEmployee = false;
+    let hasAssignedBranch = false;
+    let assignedBranchId = null;
+    const ownBranchPermissionCodes = ['BRANCH_STOCK_VIEW','BRANCH_STOCK_MANAGE','BRANCH_SALE_CREATE'];
     let permissions = new Set();
     let employeeRoles = [];
     let permissionOptions = [];
@@ -776,6 +787,7 @@
     let editingBranch = null;
     let editingProfile = null;
     let movementProducts = [];
+    let movementLocations = [];
     let operationTypes = [];
     let editingOperationType = null;
     let pendingInventoryOperation = null;
@@ -792,15 +804,14 @@
       if (view.id === 'branches' || view.dataset.parent === 'branches')
         return can(view.id === 'branch-create' ? 'BRANCHES_MANAGE' : 'BRANCHES_VIEW');
       if (view.hasAttribute('data-admin-view')) return isAdmin;
-      if (view.id === 'channels') return isAdmin || !isBranchEmployee && (can('ORDERS_VIEW') || can('CHANNELS_VIEW') || can('OPERATIONS_ORDERS_VIEW'));
+      if (view.id === 'channels') return can('ORDERS_VIEW') || can('CHANNELS_VIEW') || can('OPERATIONS_ORDERS_VIEW');
       if (view.id === 'channel-stock') return can('CHANNELS_VIEW');
       if (view.id === 'products') return can('PRODUCTS_VIEW') || can('STOCK_VIEW') || can('BRANCH_STOCK_VIEW');
       if (view.id === 'product-editor') return can('PRODUCTS_CREATE') || can('PRODUCTS_EDIT');
       if (view.id === 'movement-create') return can('STOCK_MANAGE') || can('BRANCH_STOCK_MANAGE') || can('STOCK_TRANSFER');
       if (view.id === 'operation-types') return can('STOCK_TYPES_MANAGE');
       if (view.id === 'movements') return can('STOCK_VIEW') || can('BRANCH_STOCK_VIEW');
-      if (view.hasAttribute('data-branch-view')) return isBranchEmployee && can('BRANCH_STOCK_VIEW');
-      if (isBranchEmployee) return false;
+      if (view.hasAttribute('data-branch-view')) return hasAssignedBranch && can('BRANCH_STOCK_VIEW');
       switch (view.id) {
         case 'overview': return can('STOCK_VIEW') && can('ORDERS_VIEW');
         case 'orders': return can('ORDERS_VIEW') || can('OPERATIONS_ORDERS_VIEW');
@@ -836,7 +847,7 @@
     function renderRolePermissions(selected = []) {
       const body = $('employeeRolePermissions');
       body.replaceChildren();
-      for (const permission of permissionOptions.filter(item => item.scope === $('employeeRoleScope').value)) {
+      for (const permission of permissionOptions) {
         const label = document.createElement('label');
         const input = document.createElement('input');
         input.type = 'checkbox';
@@ -874,9 +885,9 @@
     }
 
     function updateProfileBranch() {
-      const forBranch = profileRoleSelection().role === 'BRANCH_EMPLOYEE';
-      $('profileBranchField').hidden = !forBranch;
-      $('profileBranch').disabled = !forBranch; $('profileBranch').required = forBranch;
+      const selected=profileRoleSelection();const role=employeeRoles.find(r=>r.id===selected.employeeRoleId);
+      const required=selected.role==='BRANCH_EMPLOYEE'||(role?.permissions||[]).some(p=>ownBranchPermissionCodes.includes(p));
+      $('profileBranchField').hidden=false;$('profileBranch').disabled=false;$('profileBranch').required=required;
     }
 
     function closeEmployeeProfile() {
@@ -964,6 +975,7 @@
       editingRoleId = null;
       $('employeeRoleForm').reset();
       $('employeeRoleScope').disabled = false;
+      $('employeeRoleScope').value = 'USER';
       $('cancelRoleEdit').hidden = true;
       renderRolePermissions();
     }
@@ -978,17 +990,21 @@
       const selected = select.value;
       select.replaceChildren(new Option('Merkez çalışanı (hazır)', 'USER'), new Option('Şube çalışanı (hazır)', 'BRANCH_EMPLOYEE'));
       for (const role of roles) {
-        select.add(new Option(role.name + (role.scope === 'USER' ? ' · Merkez' : ' · Şube'), 'profile:' + role.id));
+        select.add(new Option(role.name, 'profile:' + role.id));
       }
       if ([...select.options].some(option => option.value === selected)) select.value = selected;
       const body = $('employeeRoleRows');
       body.replaceChildren();
-      if (!roles.length) emptyRow(body, 'Henüz özel rol tanımlanmamış.', 4);
+      if (!roles.length) emptyRow(body, 'Henüz özel rol tanımlanmamış.', 3);
       for (const role of roles) {
         const row = document.createElement('tr');
         cell(row, role.name);
-        cell(row, role.scope === 'USER' ? 'Merkez' : 'Şube');
-        cell(row, role.permissions.map(code => options.find(item => item.code === code)?.label || code).join(', '));
+        const details=document.createElement('details');details.className='employee-permissions';
+        const summary=document.createElement('summary');const preview=document.createElement('span');preview.className='employee-permission-preview';
+        const selected=options.filter(o=>role.permissions.includes(o.code));preview.textContent=selected.slice(0,3).map(o=>o.label).join(', ');
+        const more=document.createElement('span');more.textContent='…';more.setAttribute('aria-hidden','true');summary.append(preview,more);
+        const list=document.createElement('ul');for(const permission of selected){const item=document.createElement('li');item.textContent=permission.label;list.append(item);}
+        details.append(summary,list);cell(row,details);
         const edit = document.createElement('button');
         edit.type = 'button';
         edit.className = 'secondary';
@@ -1009,10 +1025,11 @@
           if (!confirm(role.name + ' rolü kaldırılsın mı? Atanmış çalışan varsa işlem engellenir.')) return;
           action(removeRole, async () => { await api('/roles/' + role.id, 'DELETE'); resetRoleForm(); await refreshRoles(); notify('Rol kaldırıldı.'); });
         }); roleActions.append(edit, removeRole); cell(row, roleActions);
+        [...row.cells].forEach((column,index)=>{column.dataset.label=['Rol','Yetkiler','İşlem'][index];});
         body.append(row);
       }
       if (editingRoleId === null) renderRolePermissions();
-      updateInviteBranch();
+      updateInviteBranch(false);
       await refreshEmployees();
     }
 
@@ -1251,7 +1268,7 @@
         cell(row, product.sku);
         cell(row, product.name + (product.active ? '' : ' · Arşivde'));
         cell(row, product.price == null ? '—' : amounts.format(product.price), 'numeric');
-        cell(row, numbers.format(product.quantity || 0), 'numeric');
+        cell(row, product.quantity == null ? 'Yetki yok' : numbers.format(product.quantity), 'numeric');
         const tags = document.createElement('div');
         tags.className = 'tag-list';
         for (const tag of product.tags || []) {
@@ -1401,7 +1418,7 @@
         })) });
       }
       movementHistory = groups.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)).slice(0, 100).flatMap(g => g.rows);
-      movementProducts = products; operationTypes = types;
+      movementProducts = products; operationTypes = types; movementLocations=locations;
       const selected = $('movementLocation').value;
       const selectedTarget = $('movementTargetLocation').value, historySelection = $('historyLocation').value;
       $('movementLocation').replaceChildren(new Option('Stok yeri seç', ''));
@@ -1462,6 +1479,10 @@
       }
       if ($('movementDirection').selectedOptions[0]?.disabled) $('movementDirection').value = [...$('movementDirection').options].find(o => !o.disabled)?.value || 'IN';
       const transfer = $('movementDirection').value === 'TRANSFER';
+      const locations=transfer||can('STOCK_MANAGE') ? movementLocations : movementLocations.filter(l=>l.branchId===assignedBranchId);
+      setOptions('movementLocation','Stok yeri seç',locations,l=>l.name,l=>l.branchId==null?'central':l.branchId);
+      if(locations.length===1) $('movementLocation').selectedIndex=1;
+      setOptions('movementTargetLocation','Hedef seç',movementLocations,l=>l.name,l=>l.branchId==null?'central':l.branchId);
       $('movementTargetField').hidden = !transfer; $('movementTargetLocation').disabled = !transfer; $('movementTargetLocation').required = transfer;
       $('movementLocationLabel').firstChild.textContent = $('movementDirection').value === 'IN' ? 'Hedef stok yeri' : 'Kaynak stok yeri';
       const selected = $('movementType').value;
@@ -1497,16 +1518,18 @@
       }
     }
 
-    function renderInvitePermissions() {
+    function renderInvitePermissions(preserveSelection = false) {
       const { scope, employeeRole } = selectedInviteRole();
       const base = employeeRole?.permissions || permissionOptions.filter(option => option.scope === scope && option.defaultGranted !== false).map(option => option.code);
-      renderPermissionChoices('invitePermissions', scope, base, base);
+      const inputs = [...$('invitePermissions').querySelectorAll('input')];
+      const selected = preserveSelection && inputs.length ? inputs.filter(i => i.checked).map(i => i.value) : base;
+      renderPermissionChoices('invitePermissions', scope, selected, base);
     }
 
     function renderPermissionChoices(containerId, scope, selected, base) {
       const body = $(containerId);
       body.replaceChildren();
-      for (const permission of permissionOptions.filter(option => option.scope === scope)) {
+      for (const permission of permissionOptions) {
         const label = document.createElement('label');
         const input = document.createElement('input');
         input.type = 'checkbox';
@@ -1514,21 +1537,25 @@
         input.value = permission.code;
         input.dataset.base = String(base.includes(permission.code));
         input.checked = selected.includes(permission.code);
+        if(containerId==='employeePermissionChoices' && !editingEmployee?.branchId && ownBranchPermissionCodes.includes(permission.code)) input.disabled=true;
         input.addEventListener('change', () => {
           synchronizePermissionChoices(body, input);
+          if(containerId==='invitePermissions') updateInviteBranchLocation();
         });
         label.append(input, document.createTextNode(permission.label));
         body.append(label);
       }
     }
 
-    function updateInviteBranch() {
-      renderInvitePermissions();
-      const forBranch = selectedInviteRole().scope === 'BRANCH_EMPLOYEE';
-      $('inviteBranchField').hidden = !forBranch;
-      $('inviteBranch').disabled = !forBranch;
-      $('inviteBranch').required = forBranch;
-      $('inviteBranchEmpty').hidden = !forBranch || $('inviteBranch').options.length > 1;
+    function updateInviteBranch(resetSelection = true) {
+      renderInvitePermissions(resetSelection === false);
+      updateInviteBranchLocation();
+    }
+    function updateInviteBranchLocation() {
+      const own=[...$('invitePermissions').querySelectorAll('input:checked')].some(i=>ownBranchPermissionCodes.includes(i.value));
+      const required=selectedInviteRole().scope==='BRANCH_EMPLOYEE'||own;
+      $('inviteBranchField').hidden=!required;$('inviteBranch').disabled=!required;$('inviteBranch').required=required;
+      $('inviteBranchEmpty').hidden=!required||$('inviteBranch').options.length>1;
     }
 
     function setOptions(id, label, items, text, value = item => item.id) {
@@ -1577,7 +1604,7 @@
       const active = branches.filter(b => b.active !== false);
       setOptions('inviteBranch', 'Şube / depo seç', active, branch => branch.name);
       setOptions('inventoryBranch', 'Şube / depo seç', active, branch => branch.name);
-      updateInviteBranch();
+      updateInviteBranchLocation();
     }
 
     function renderBranchStock(id, lines, emptyMessage) {
@@ -1617,7 +1644,7 @@
       const session = token;
       const request = ++employeeStockRequest;
       const lines = await api('/branches/me/stock');
-      if (token !== session || !isBranchEmployee || request !== employeeStockRequest) return;
+      if (token !== session || !hasAssignedBranch || request !== employeeStockRequest) return;
       renderBranchStock('employeeStockRows', lines, 'Şubene henüz stok tanımlanmamış.');
       const available = lines.filter(line => line.quantity > 0);
       setOptions('branchSaleProduct', available.length ? 'Ürün seç' : 'Satılabilir ürün yok', available,
@@ -1712,12 +1739,13 @@
         token = login.accessToken;
         isAdmin = login.role === 'ADMIN';
         isBranchEmployee = login.role === 'BRANCH_EMPLOYEE';
+        assignedBranchId=login.branchId??null;hasAssignedBranch = assignedBranchId!==null;
         permissions = new Set(login.permissions || []);
         try {
           if (!isAdmin && !permissions.size) throw new Error('Hesabına henüz yetki tanımlanmamış. Yöneticiyle görüş.');
           if (isAdmin) await Promise.all([refresh(), refreshBranches(), refreshRoles()]);
-          else if (isBranchEmployee) await refreshEmployeeStock();
-          else await Promise.all([refresh(), can('BRANCHES_VIEW') ? refreshBranches() : Promise.resolve()]);
+          else await Promise.all([refresh(), can('BRANCHES_VIEW') ? refreshBranches() : Promise.resolve(),
+            hasAssignedBranch && can('BRANCH_STOCK_VIEW') ? refreshEmployeeStock() : Promise.resolve()]);
         } catch (error) {
           token = '';
           isAdmin = false;
@@ -1727,8 +1755,8 @@
         }
         document.querySelectorAll('[data-admin-only]').forEach(element => { element.hidden = !isAdmin; });
         document.querySelectorAll('[data-permission]').forEach(element => { element.hidden = !can(element.dataset.permission); });
-        document.querySelectorAll('[data-central-only]').forEach(element => { element.hidden = isBranchEmployee; });
-        document.querySelectorAll('[data-branch-only]').forEach(element => { element.hidden = !isBranchEmployee; });
+        document.querySelectorAll('[data-central-only]').forEach(element => { element.hidden = !can('STOCK_VIEW'); });
+        document.querySelectorAll('[data-branch-only]').forEach(element => { element.hidden = !hasAssignedBranch || !can('BRANCH_STOCK_VIEW'); });
         $('branchSaleForm').closest('section').hidden = !can('BRANCH_SALE_CREATE');
         $('assignedBranch').textContent = login.branchName || '';
         $('all-orders-description').textContent = can('OPERATIONS_ORDERS_VIEW')
@@ -1747,6 +1775,8 @@
       token = '';
       isAdmin = false;
       isBranchEmployee = false;
+      hasAssignedBranch = false;
+      assignedBranchId=null;movementLocations=[];
       permissions = new Set();
       employeeRoles = [];
       permissionOptions = [];
@@ -1849,7 +1879,7 @@
         const role = profileRoleSelection();
         await api('/auth/accounts/' + employee.id, 'PUT', { revision: employee.revision, username: $('profileUsername').value.trim(),
           fullName: $('profileFullName').value.trim() || null, role: role.role, employeeRoleId: role.employeeRoleId,
-          branchId: role.role === 'BRANCH_EMPLOYEE' ? Number($('profileBranch').value) : null,
+          branchId: $('profileBranch').value ? Number($('profileBranch').value) : null,
           enabled: $('profileEnabled').value === 'true' });
         closeEmployeeProfile(); await refreshEmployees(); notify('Çalışan bilgileri güncellendi.');
       }, error => { $('employeeProfileError').textContent = error.message; });
@@ -1893,7 +1923,7 @@
           pendingBranchSale = { productId, quantity, saleId: newSaleId() };
         }
         await api('/branches/me/sales', 'POST', pendingBranchSale);
-        if (token !== session || !isBranchEmployee) return;
+        if (token !== session || !hasAssignedBranch) return;
         pendingBranchSale = null;
         $('branchSaleForm').reset();
         $('branchSaleProduct').value = '';
@@ -1980,7 +2010,7 @@
           addedPermissions: choices.filter(input => input.checked && input.dataset.base === 'false').map(input => input.value)
         };
         if (employeeRole) request.employeeRoleId = employeeRole.id;
-        if (scope === 'BRANCH_EMPLOYEE') request.branchId = Number($('inviteBranch').value);
+        if (!$('inviteBranch').disabled && $('inviteBranch').value) request.branchId = Number($('inviteBranch').value);
         const invitation = await api('/auth/accounts', 'POST', request);
         if (!isAdmin) return;
         const link = new URL(location.pathname, location.origin);
@@ -2237,7 +2267,7 @@
         await api('/inventory-operations', 'POST', { ...request, requestId: pendingInventoryOperation.requestId });
         pendingInventoryOperation = null; $('additionalMovementItems').replaceChildren(); $('movementType').value = '';
         $('movementQuantity').value = ''; $('movementReason').value = ''; $('movementNote').value = '';
-        await Promise.all([refreshMovements(), isBranchEmployee ? refreshEmployeeStock() : refresh()]);
+        await Promise.all([refreshMovements(), refresh(), hasAssignedBranch && can('BRANCH_STOCK_VIEW') ? refreshEmployeeStock() : Promise.resolve()]);
         notify('Stok hareketi ve ürün adedi güncellendi.');
       });
     });

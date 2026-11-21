@@ -30,5 +30,12 @@ class OwnerFirstInstallationIntegrationTest {
                 .content("{\"name\":\"İlk ürün\",\"sku\":\"FIRST-001\",\"quantity\":3}"))
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.quantity").value(3));
         assertThat(branches.count()).isZero();assertThat(users.count()).isEqualTo(1);
+        JsonNode branch=json.readTree(mvc.perform(post("/api/v1/branches").header("Authorization","Bearer "+token)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Kartal\"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+        // Exercise the real migration constraints, not Hibernate's create-drop schema.
+        mvc.perform(post("/api/v1/auth/accounts").header("Authorization","Bearer "+token)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"username\":\"optional-branch\",\"role\":\"USER\",\"branchId\":"+branch.path("id").asLong()+"}"))
+                .andExpect(status().isOk());
     }
 }

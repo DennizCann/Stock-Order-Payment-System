@@ -68,6 +68,12 @@ public class EmployeeRoleController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Mevcut rolün çalışma alanı değiştirilemez. Diğer alan için yeni rol oluştur.");
         }
+        if(Permission.needsBranch(request.permissions())) for(var user:users.findAllByEmployeeRoleId(id)) {
+            if(user.getBranch()!=null) continue;
+            var effective=new java.util.HashSet<>(request.permissions());effective.addAll(user.getAddedPermissions());effective.removeAll(user.getExcludedPermissions());
+            if(Permission.needsBranch(effective)) throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Bu rolü kullanan çalışanlara önce bir şube/depo ata; sonra kendi şubesi izinlerini ekle.");
+        }
         role.revise(request.name(), request.permissions());
         return save(role);
     }

@@ -5,7 +5,7 @@ import java.util.Set;
 
 public enum Permission {
     PRODUCTS_VIEW("Ürünleri görüntüle", Role.USER),
-    STOCK_VIEW("Merkez stoğunu görüntüle", Role.USER),
+    STOCK_VIEW("Tüm konumların stoğunu görüntüle", Role.USER),
     ORDERS_VIEW("Kendi siparişlerini görüntüle", Role.USER),
     ORDERS_CREATE("Kendi hesabına sipariş oluştur", Role.USER),
     BRANCH_STOCK_VIEW("Kendi şubesinin stoğunu görüntüle", Role.BRANCH_EMPLOYEE),
@@ -47,14 +47,11 @@ public enum Permission {
     }
 
     public static Set<Permission> availableFor(Role role) {
-        EnumSet<Permission> result = EnumSet.noneOf(Permission.class);
-        for (Permission permission : values()) {
-            if (role == Role.ADMIN || permission.scope == role) {
-                result.add(permission);
-            }
-        }
-        return result;
+        return role == null ? EnumSet.noneOf(Permission.class) : EnumSet.allOf(Permission.class);
     }
+
+    public static Set<Permission> ownBranchPermissions() {return EnumSet.of(BRANCH_STOCK_VIEW,BRANCH_STOCK_MANAGE,BRANCH_SALE_CREATE);}
+    public static boolean needsBranch(Set<Permission> selected) {return !java.util.Collections.disjoint(selected,ownBranchPermissions());}
 
     public static Set<Permission> forUser(User user) {
         if (user.getRole() == Role.ADMIN) {
@@ -65,6 +62,7 @@ public enum Permission {
                 ? defaultsFor(user.getRole()) : user.getEmployeeRole().getPermissions());
         effective.addAll(user.getAddedPermissions());
         effective.removeAll(user.getExcludedPermissions());
+        if(user.getBranch()==null) effective.removeAll(ownBranchPermissions());
         if (!effective.contains(BRANCH_STOCK_VIEW)) effective.remove(BRANCH_SALE_CREATE);
         if (!effective.contains(ORDERS_VIEW)) effective.remove(ORDERS_CREATE);
         if (!effective.contains(PRODUCTS_VIEW)) effective.removeAll(EnumSet.of(PRODUCTS_CREATE, PRODUCTS_EDIT, PRODUCTS_DELETE));

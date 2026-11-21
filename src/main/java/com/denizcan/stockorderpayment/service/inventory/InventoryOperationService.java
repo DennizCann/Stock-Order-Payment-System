@@ -67,20 +67,22 @@ public class InventoryOperationService {
                 || request.kind() == StockOperation.Kind.OUT && request.targetBranchId() != null) throw bad("Hareket türüne uygun kaynak ve hedef seç.");
         if (request.kind() == StockOperation.Kind.TRANSFER) {
             if (Objects.equals(request.sourceBranchId(), request.targetBranchId())) throw bad("Aktarım kaynağı ve hedefi farklı olmalı.");
-            if (actor.branch() != null || !actor.permissions().contains(Permission.STOCK_TRANSFER)) throw denied();
-        } else if (actor.branch() != null) {
+            if (!actor.permissions().contains(Permission.STOCK_TRANSFER)) throw denied();
+        } else if (!actor.permissions().contains(Permission.STOCK_MANAGE)) {
             Long target = request.kind() == StockOperation.Kind.IN ? request.targetBranchId() : request.sourceBranchId();
-            if (!actor.permissions().contains(Permission.BRANCH_STOCK_MANAGE) || !actor.branch().equals(target)) throw denied();
-        } else if (!actor.permissions().contains(Permission.STOCK_MANAGE)) throw denied();
+            if (!actor.permissions().contains(Permission.BRANCH_STOCK_MANAGE) || actor.assignedBranch()==null || !actor.assignedBranch().equals(target)) throw denied();
+        }
     }
 
     private Actor actor(String username) {
         var template = new TransactionTemplate(transactions); template.setReadOnly(true);
         return template.execute(status -> {
             User user = users.findByUsername(username).filter(User::isEnabled).orElseThrow(InventoryOperationService::denied);
-            Long branch = user.getRole() == Role.BRANCH_EMPLOYEE && user.getBranch() != null ? user.getBranch().getId() : null;
-            if (user.getRole() == Role.BRANCH_EMPLOYEE && branch == null) throw denied();
-            return new Actor(user, Set.copyOf(Permission.forUser(user)), branch);
+            var permissions=Set.copyOf(Permission.forUser(user));
+            Long assigned=user.getBranch()==null?null:user.getBranch().getId();
+            Long visible=permissions.contains(Permission.STOCK_VIEW)?null:assigned;
+            if(!permissions.contains(Permission.STOCK_VIEW)&&(!permissions.contains(Permission.BRANCH_STOCK_VIEW)||assigned==null)) throw denied();
+            return new Actor(user,permissions,visible,assigned);
         });
     }
 
@@ -109,7 +111,7 @@ public class InventoryOperationService {
     private static String normalized(String value) { return value == null ? "" : value.strip(); }
     private static ResponseStatusException bad(String text) { return new ResponseStatusException(HttpStatus.BAD_REQUEST, text); }
     private static AccessDeniedException denied() { return new AccessDeniedException("Bu stok hareketi için yetkiniz yok."); }
-    private record Actor(User user, Set<Permission> permissions, Long branch) {}
+    private record Actor(User user, Set<Permission> permissions, Long branch,Long assignedBranch) {}
     public record Operation(UUID id, StockOperation.Kind kind, Long sourceBranchId, Long targetBranchId, String sourceName,
                             String targetName, String label, String note, String username, Instant createdAt, List<Line> lines) {}
     public record Line(Long productId, String productName, String sku, int quantity, Integer sourceRemaining, Integer targetRemaining) {}

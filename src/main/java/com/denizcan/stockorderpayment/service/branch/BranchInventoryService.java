@@ -141,7 +141,7 @@ public class BranchInventoryService {
 
     private User employee(String username) {
         User actor = activeUser(username);
-        if (actor.getRole() != Role.BRANCH_EMPLOYEE || actor.getBranch() == null || !actor.getBranch().isActive()) {
+        if (actor.getBranch() == null || !actor.getBranch().isActive()) {
             throw new AccessDeniedException("Şubeye atanmış bir çalışan hesabı gerekiyor.");
         }
         return actor;

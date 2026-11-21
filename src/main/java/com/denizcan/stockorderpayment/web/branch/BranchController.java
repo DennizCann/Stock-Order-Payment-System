@@ -79,13 +79,13 @@ public class BranchController {
     }
 
     @GetMapping("/me/stock")
-    @PreAuthorize("hasRole('BRANCH_EMPLOYEE')")
+    @PreAuthorize("hasAuthority('BRANCH_STOCK_VIEW')")
     public List<StockLine> employeeStock(Principal principal) {
         return inventory.employeeStock(principal.getName());
     }
 
     @PostMapping("/me/sales")
-    @PreAuthorize("hasRole('BRANCH_EMPLOYEE')")
+    @PreAuthorize("hasAuthority('BRANCH_SALE_CREATE')")
     public Movement sale(@Valid @RequestBody SaleRequest request, Principal principal) {
         return inventory.recordSale(principal.getName(), request.productId(), request.quantity(), request.saleId());
     }

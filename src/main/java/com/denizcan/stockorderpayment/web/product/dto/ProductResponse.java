@@ -10,7 +10,7 @@ public record ProductResponse(
         String name,
         String sku,
         BigDecimal price,
-        long quantity,
+        Long quantity,
         boolean active,
         List<Tag> tags,
         long version

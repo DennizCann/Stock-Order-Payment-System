@@ -50,10 +50,10 @@ public class StockMovementService {
                        int quantity, String reason, String note) {
         User user = user(username);
         Set<Permission> permissions = Permission.forUser(user);
-        if (user.getRole() == Role.BRANCH_EMPLOYEE) {
+        if (!permissions.contains(Permission.STOCK_MANAGE)) {
             if (!permissions.contains(Permission.BRANCH_STOCK_MANAGE) || user.getBranch() == null
                     || !user.getBranch().getId().equals(branchId)) throw denied();
-        } else if (!permissions.contains(Permission.STOCK_MANAGE)) throw denied();
+        }
         Product product = products.findById(productId).orElseThrow(() ->
                 new ResponseStatusException(HttpStatus.NOT_FOUND, "Ürün bulunamadı."));
         if (!product.isActive()) throw new ResponseStatusException(HttpStatus.CONFLICT, "Arşivlenmiş ürün kullanılamaz.");
@@ -73,7 +73,7 @@ public class StockMovementService {
     @Transactional(readOnly = true)
     public List<Location> locations(String username) {
         User user = user(username);
-        if (user.getRole() == Role.BRANCH_EMPLOYEE) {
+        if (!Permission.forUser(user).contains(Permission.STOCK_VIEW)) {
             if (user.getBranch() == null) throw denied();
             return List.of(new Location(user.getBranch().getId(), user.getBranch().getName()));
         }
@@ -87,7 +87,8 @@ public class StockMovementService {
     public List<Movement> list(String username) {
         User user = user(username);
         List<Movement> result = new ArrayList<>();
-        if (user.getRole() != Role.BRANCH_EMPLOYEE) {
+        boolean global=Permission.forUser(user).contains(Permission.STOCK_VIEW);
+        if (global) {
             var centralLines = centralMovements.findTop100ByOperationIdIsNullAndTypeNotInAndQuantityChangeNotOrderByCreatedAtDescIdDesc(
                     List.of(InventoryTransactionType.RESERVATION, InventoryTransactionType.RELEASE), 0);
             Map<Long, Product> catalog = new HashMap<>();
@@ -104,7 +105,7 @@ public class StockMovementService {
                         m.getNote(), m.getActor() == null ? "Sistem" : m.getActor(), m.getCreatedAt()));
             }
         }
-        var branchLines = user.getRole() == Role.BRANCH_EMPLOYEE
+        var branchLines = !global
                 ? branchMovements.findTop100ByStockBranchIdAndOperationIdIsNullOrderByCreatedAtDescIdDesc(user.getBranch().getId())
                 : branchMovements.findTop100ByOperationIdIsNullOrderByCreatedAtDescIdDesc();
         for (BranchStockMovement m : branchLines) {

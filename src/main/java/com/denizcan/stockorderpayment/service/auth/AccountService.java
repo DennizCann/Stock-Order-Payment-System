@@ -85,10 +85,12 @@ public class AccountService {
         user.setFullName(fullName);
         user.setExcludedPermissions(exclusions);
         user.setAddedPermissions(additions);
+        Set<Permission> selected=new HashSet<>(basePermissions);selected.addAll(additions);selected.removeAll(exclusions);
+        requireBranch(selected,branch);
         try {
             users.saveAndFlush(user);
         } catch (DataIntegrityViolationException exception) {
-            throw accountExists();
+            throw accountConflict();
         }
         return token;
     }
@@ -122,12 +124,14 @@ public class AccountService {
         Set<Permission> available = Permission.availableFor(scope);
         Set<Permission> additions = new HashSet<>(user.getAddedPermissions()); additions.retainAll(available);
         Set<Permission> exclusions = new HashSet<>(user.getExcludedPermissions()); exclusions.retainAll(available);
+        if(branch==null) {additions.removeAll(Permission.ownBranchPermissions());exclusions.removeAll(Permission.ownBranchPermissions());}
         Set<Permission> effective = new HashSet<>(employeeRole == null ? Permission.defaultsFor(scope) : employeeRole.getPermissions());
         effective.addAll(additions); effective.removeAll(exclusions);
         validateEffectivePermissions(effective);
+        requireBranch(effective,branch);
         user.reviseAccount(username, fullName, scope, branch, employeeRole, enabled);
         user.setAddedPermissions(additions); user.setExcludedPermissions(exclusions);
-        try { users.flush(); } catch (DataIntegrityViolationException exception) { throw accountExists(); }
+        try { users.flush(); } catch (DataIntegrityViolationException exception) { throw accountConflict(); }
         return EmployeeAccount.from(user);
     }
 
@@ -149,6 +153,7 @@ public class AccountService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Çalışma alanına uygun yetkiler seç.");
         }
         validateEffectivePermissions(selected);
+        requireBranch(selected,user.getBranch());
 
         // Preserve existing personal exceptions even if the shared role has since changed.
         Set<Permission> additions = new HashSet<>(user.getAddedPermissions());
@@ -247,12 +252,17 @@ public class AccountService {
         if (role == Role.USER && branchId == null) {
             return null;
         }
-        if (role != Role.BRANCH_EMPLOYEE || branchId == null) {
+        if ((role != Role.BRANCH_EMPLOYEE && role != Role.USER) || branchId == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Merkez çalışanı veya şube çalışanı seç. Şube çalışanına bir şube ata.");
         }
         return branches.findForUpdate(branchId).filter(Branch::isActive).orElseThrow(() -> new ResponseStatusException(
                 HttpStatus.BAD_REQUEST, "Seçilen şube bulunamadı."));
+    }
+
+    private static void requireBranch(Set<Permission> selected,Branch branch) {
+        if(Permission.needsBranch(selected)&&branch==null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Kendi şubesiyle ilgili izinler için çalışana bir şube/depo ata.");
     }
 
     static void validateUsername(String username) {
@@ -277,6 +287,11 @@ public class AccountService {
 
     private static ResponseStatusException accountExists() {
         return new ResponseStatusException(HttpStatus.CONFLICT, "Bu kullanıcı adı zaten kullanımda.");
+    }
+
+    private static ResponseStatusException accountConflict() {
+        return new ResponseStatusException(HttpStatus.CONFLICT,
+                "Çalışan kaydedilemedi. Kullanıcı adı, rol ve şube bilgilerini yenileyip tekrar dene.");
     }
 
     private static ResponseStatusException invalidInvitation() {

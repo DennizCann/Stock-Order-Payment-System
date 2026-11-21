@@ -32,12 +32,12 @@ public class ProductController {
     @ResponseStatus(HttpStatus.CREATED)
     @org.springframework.security.access.prepost.PreAuthorize("#request.quantity() == null or #request.quantity() == 0 or hasAnyAuthority('ROLE_ADMIN','STOCK_MANAGE')")
     public ProductResponse create(@Valid @RequestBody CreateProductRequest request) {
-        return productService.create(request);
+        return visible(productService.create(request));
     }
 
     @GetMapping
     public List<ProductResponse> findAll(@RequestParam(defaultValue = "false") boolean includeArchived) {
-        return productService.findAll().stream().filter(p -> includeArchived || p.active()).toList();
+        return productService.findAll().stream().filter(p -> includeArchived || p.active()).map(ProductController::visible).toList();
     }
 
     @GetMapping("/tags")
@@ -45,12 +45,12 @@ public class ProductController {
 
     @PutMapping("/{id}")
     public ProductResponse update(@PathVariable Long id, @Valid @RequestBody UpdateProductRequest request) {
-        return productService.update(id, request);
+        return visible(productService.update(id, request));
     }
 
     @PostMapping("/{id}/restore")
     @org.springframework.security.access.prepost.PreAuthorize("hasAnyAuthority('ROLE_ADMIN','PRODUCTS_EDIT')")
-    public ProductResponse restore(@PathVariable Long id) { return productService.restore(id); }
+    public ProductResponse restore(@PathVariable Long id) { return visible(productService.restore(id)); }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -58,6 +58,12 @@ public class ProductController {
 
     @GetMapping("/{id}")
     public ProductResponse findById(@PathVariable Long id) {
-        return productService.findById(id);
+        return visible(productService.findById(id));
+    }
+
+    private static ProductResponse visible(ProductResponse product) {
+        var actor=org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        boolean stock=actor!=null&&actor.getAuthorities().stream().anyMatch(a->a.getAuthority().equals("ROLE_ADMIN")||a.getAuthority().equals("STOCK_VIEW"));
+        return stock?product:new ProductResponse(product.id(),product.name(),product.sku(),product.price(),null,product.active(),product.tags(),product.version());
     }
 }

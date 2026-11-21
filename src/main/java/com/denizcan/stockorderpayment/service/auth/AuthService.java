@@ -38,6 +38,6 @@ public class AuthService {
         String branchName = user.getBranch() == null ? null : user.getBranch().getName();
         String roleName = user.getEmployeeRole() == null ? user.getRole().name() : user.getEmployeeRole().getName();
         return AuthResponse.bearer(token, user.getUsername(), user.getRole().name(), branchName,
-                roleName, Permission.forUser(user));
+                user.getBranch()==null?null:user.getBranch().getId(),roleName, Permission.forUser(user));
     }
 }

@@ -116,7 +116,7 @@ class EmployeeRoleIntegrationTest {
                 .andExpect(status().isForbidden());
         for (String invalid : Set.of(
                 roleBody("Admin", "ADMIN", Set.of("PRODUCTS_VIEW")),
-                roleBody("Wrong scope", "USER", Set.of("BRANCH_STOCK_VIEW")),
+                roleBody("Missing prerequisite", "USER", Set.of("BRANCH_SALE_CREATE")),
                 roleBody("Sale without stock", "BRANCH_EMPLOYEE", Set.of("BRANCH_SALE_CREATE")),
                 roleBody("Order without view", "USER", Set.of("ORDERS_CREATE")),
                 roleBody("Empty", "USER", Set.of()))) {

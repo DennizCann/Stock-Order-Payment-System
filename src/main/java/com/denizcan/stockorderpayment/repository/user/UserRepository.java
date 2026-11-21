@@ -29,6 +29,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByRoleAndEnabledTrue(Role role);
     boolean existsByUsernameAndIdNot(String username, Long id);
     boolean existsByEmployeeRoleId(Long employeeRoleId);
+    List<User> findAllByEmployeeRoleId(Long employeeRoleId);
     boolean existsByBranchId(Long branchId);
 
     boolean existsByActivationTokenHashAndEnabledFalseAndActivationExpiresAtAfter(String tokenHash, Instant now);

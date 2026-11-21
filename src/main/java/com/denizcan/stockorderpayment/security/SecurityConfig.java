@@ -51,6 +51,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/branches/me/stock").hasAuthority("BRANCH_STOCK_VIEW")
                         .requestMatchers(HttpMethod.POST, "/api/v1/branches/me/sales").hasAuthority("BRANCH_SALE_CREATE")
                         .requestMatchers("/api/v1/branches/me/**").denyAll()
+                        .requestMatchers(HttpMethod.GET,"/api/v1/branches").hasAnyAuthority("ROLE_ADMIN","BRANCHES_VIEW")
+                        .requestMatchers(HttpMethod.GET,"/api/v1/branches/*/stock").hasAnyAuthority("ROLE_ADMIN","STOCK_VIEW")
                         .requestMatchers(HttpMethod.POST, "/api/v1/branches").hasAnyAuthority("ROLE_ADMIN", "BRANCHES_MANAGE")
                         .requestMatchers(HttpMethod.PUT, "/api/v1/branches/*").hasAnyAuthority("ROLE_ADMIN", "BRANCHES_MANAGE")
                         .requestMatchers(HttpMethod.PUT, "/api/v1/branches/*/stock/*").hasAnyAuthority("ROLE_ADMIN", "STOCK_MANAGE")
