@@ -57,10 +57,17 @@ public class AccountService {
     @Transactional
     public String invite(String username, Role requestedRole, Long branchId, Long employeeRoleId,
                          Set<Permission> excludedPermissions, Set<Permission> addedPermissions, String fullName) {
+        return invite(username, requestedRole, branchId, employeeRoleId, excludedPermissions, addedPermissions, fullName, null);
+    }
+
+    @Transactional
+    public String invite(String username, Role requestedRole, Long branchId, Long employeeRoleId,
+                         Set<Permission> excludedPermissions, Set<Permission> addedPermissions, String fullName, Long roleVersion) {
         validateUsername(username);
         validateFullName(fullName);
-        EmployeeRole employeeRole = employeeRoleId == null ? null : employeeRoles.findById(employeeRoleId)
+        EmployeeRole employeeRole = employeeRoleId == null ? null : employeeRoles.findForUpdate(employeeRoleId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Seçilen rol bulunamadı."));
+        requireRoleVersion(employeeRole, roleVersion);
         if (employeeRole != null && requestedRole != null && employeeRole.getScope() != requestedRole) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rol ile çalışma alanı uyuşmuyor.");
         }
@@ -103,6 +110,12 @@ public class AccountService {
     @Transactional
     public EmployeeAccount updateAccount(Long id, String revision, String username, String fullName,
                                          Role requestedRole, Long branchId, Long employeeRoleId, boolean enabled) {
+        return updateAccount(id, revision, username, fullName, requestedRole, branchId, employeeRoleId, enabled, null);
+    }
+
+    @Transactional
+    public EmployeeAccount updateAccount(Long id, String revision, String username, String fullName,
+                                         Role requestedRole, Long branchId, Long employeeRoleId, boolean enabled, Long roleVersion) {
         validateUsername(username);
         validateFullName(fullName);
         User user = users.findByIdForUpdate(id).orElseThrow(() ->
@@ -115,8 +128,9 @@ public class AccountService {
         if (users.existsByUsernameAndIdNot(username, id)) throw accountExists();
         if (enabled && user.getActivationTokenHash() != null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                 "Çalışanın önce parola bağlantısıyla hesabını etkinleştirmesi gerekiyor.");
-        EmployeeRole employeeRole = employeeRoleId == null ? null : employeeRoles.findById(employeeRoleId)
+        EmployeeRole employeeRole = employeeRoleId == null ? null : employeeRoles.findForUpdate(employeeRoleId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Seçilen rol bulunamadı."));
+        requireRoleVersion(employeeRole, roleVersion);
         Role scope = employeeRole == null ? requestedRole : employeeRole.getScope();
         if (scope == null || scope == Role.ADMIN || employeeRole != null && requestedRole != null && scope != requestedRole)
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rol ile çalışma alanı uyuşmuyor.");
@@ -263,6 +277,13 @@ public class AccountService {
     private static void requireBranch(Set<Permission> selected,Branch branch) {
         if(Permission.needsBranch(selected)&&branch==null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                 "Kendi şubesiyle ilgili izinler için çalışana bir şube/depo ata.");
+    }
+
+    private static void requireRoleVersion(EmployeeRole role, Long expected) {
+        if (expected != null && (role == null || expected != role.getVersion())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Seçilen rolün yetkileri değişmiş. Rol listesini yenileyip seçimlerini kontrol et.");
+        }
     }
 
     static void validateUsername(String username) {

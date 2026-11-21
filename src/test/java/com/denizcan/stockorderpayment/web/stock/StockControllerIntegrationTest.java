@@ -61,7 +61,7 @@ class StockControllerIntegrationTest {
 
         mockMvc.perform(patch("/api/v1/products/" + productId + "/stock")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("quantity", 25))))
+                        .content(objectMapper.writeValueAsString(Map.of("quantity", 25, "version", 0))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.quantity").value(25));
     }

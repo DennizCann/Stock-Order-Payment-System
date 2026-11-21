@@ -47,7 +47,7 @@ public class BranchInventoryService {
     }
 
     @Transactional
-    public StockLine setQuantity(Long branchId, Long productId, int quantity, String username) {
+    public StockLine setQuantity(Long branchId, Long productId, int quantity, Long version, String username) {
         User actor = activeUser(username);
         // Lock the branch even when this product has no stock row yet.
         Branch branch = branches.findForUpdate(branchId).orElseThrow(BranchInventoryService::branchNotFound);
@@ -56,6 +56,11 @@ public class BranchInventoryService {
                 .orElseGet(() -> new BranchStock(branch, products.findById(productId).orElseThrow(() ->
                         new ResponseStatusException(HttpStatus.NOT_FOUND, "Ürün bulunamadı.")), 0));
 
+        if (line.getId() != null && (version == null || version != line.getVersion())
+                || line.getId() == null && version != null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Şube stoğu değişmiş veya sürüm bilgisi eksik. Listeyi yenileyip tekrar dene.");
+        }
         int previousQuantity = line.getQuantity();
         if (line.getId() == null || previousQuantity != quantity) {
             line.setQuantity(quantity);
@@ -63,6 +68,7 @@ public class BranchInventoryService {
             movements.save(new BranchStockMovement(line, actor, previousQuantity, null));
             adjustTotal(productId, (long) quantity - previousQuantity);
         }
+        stock.flush();
         return StockLine.from(line);
     }
 
@@ -155,10 +161,10 @@ public class BranchInventoryService {
         return new ResponseStatusException(HttpStatus.CONFLICT, "Bu satış numarası başka bir işlemde kullanılmış.");
     }
 
-    public record StockLine(Long productId, String productName, String sku, int quantity) {
+    public record StockLine(Long productId, String productName, String sku, int quantity, long version) {
         static StockLine from(BranchStock stock) {
             Product product = stock.getProduct();
-            return new StockLine(product.getId(), product.getName(), product.getSku(), stock.getQuantity());
+            return new StockLine(product.getId(), product.getName(), product.getSku(), stock.getQuantity(), stock.getVersion());
         }
     }
 

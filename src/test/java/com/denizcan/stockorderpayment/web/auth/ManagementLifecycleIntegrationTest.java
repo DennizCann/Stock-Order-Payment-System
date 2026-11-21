@@ -99,7 +99,7 @@ class ManagementLifecycleIntegrationTest {
         String path = "/api/v1/branches/" + branch.path("id").asLong() + "/stock/" + product.path("id").asLong();
         mvc.perform(put(path).header("Authorization", admin).contentType(MediaType.APPLICATION_JSON).content("{\"quantity\":2}"))
                 .andExpect(status().isOk()); branchUpdate(admin, branch, branch.path("name").asText(), false, 409);
-        mvc.perform(put(path).header("Authorization", admin).contentType(MediaType.APPLICATION_JSON).content("{\"quantity\":0}"))
+        mvc.perform(put(path).header("Authorization", admin).contentType(MediaType.APPLICATION_JSON).content("{\"quantity\":0,\"version\":0}"))
                 .andExpect(status().isOk());
         branchUpdate(admin, branch, branch.path("name").asText(), false, 200);
         mvc.perform(put(path).header("Authorization", admin).contentType(MediaType.APPLICATION_JSON).content("{\"quantity\":1}"))

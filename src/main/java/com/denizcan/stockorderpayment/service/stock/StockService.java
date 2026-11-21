@@ -61,6 +61,10 @@ public class StockService {
         Stock stock = stockRepository.findByProductIdForUpdate(productId)
                 .orElseThrow(() -> NotFoundException.stock(productId));
 
+        if (request.version() == null || request.version() != stock.getVersion()) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT,
+                    "Stok değişmiş veya sürüm bilgisi eksik. Güncel stoğu okuyup tekrar dene.");
+        }
         int previous = stock.getQuantity();
         stock.setQuantity(request.quantity());
 
@@ -73,6 +77,7 @@ public class StockService {
         );
 
         log.info("Adjusted stock for productId={} from={} to={}", productId, previous, stock.getQuantity());
+        stockRepository.flush();
         return StockResponse.from(stock);
     }
 

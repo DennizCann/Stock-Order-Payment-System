@@ -56,7 +56,7 @@ class EmployeeRoleIntegrationTest {
 
         mvc.perform(put("/api/v1/roles/" + roleId).header("Authorization", bearer(admin))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(roleBody("Sipariş asistanı", "USER", Set.of("ORDERS_VIEW"))))
+                        .content(roleUpdateBody(roleId, "Sipariş asistanı", "USER", Set.of("ORDERS_VIEW"))))
                 .andExpect(status().isOk());
         mvc.perform(get("/api/v1/orders").header("Authorization", bearer(employee)))
                 .andExpect(status().isOk());
@@ -95,7 +95,7 @@ class EmployeeRoleIntegrationTest {
 
         mvc.perform(put("/api/v1/roles/" + roleId).header("Authorization", bearer(admin))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(roleBody("Satış danışmanı", "BRANCH_EMPLOYEE", Set.of("BRANCH_STOCK_VIEW", "BRANCH_SALE_CREATE"))))
+                        .content(roleUpdateBody(roleId, "Satış danışmanı", "BRANCH_EMPLOYEE", Set.of("BRANCH_STOCK_VIEW", "BRANCH_SALE_CREATE"))))
                 .andExpect(status().isOk());
         // The same token now reaches the sale service, which rejects the product absent from this branch.
         mvc.perform(post("/api/v1/branches/me/sales").header("Authorization", bearer(employee))
@@ -127,7 +127,7 @@ class EmployeeRoleIntegrationTest {
         long roleId = createRole(admin, "Katalog sorumlusu", "USER", Set.of("PRODUCTS_VIEW"));
         mvc.perform(put("/api/v1/roles/" + roleId).header("Authorization", bearer(admin))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(roleBody("Şubeye dönüşüm", "BRANCH_EMPLOYEE", Set.of("BRANCH_STOCK_VIEW"))))
+                        .content(roleUpdateBody(roleId, "Şubeye dönüşüm", "BRANCH_EMPLOYEE", Set.of("BRANCH_STOCK_VIEW"))))
                 .andExpect(status().isBadRequest());
         mvc.perform(post("/api/v1/auth/accounts").header("Authorization", bearer(admin))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -163,7 +163,7 @@ class EmployeeRoleIntegrationTest {
 
         mvc.perform(put("/api/v1/roles/" + roleId).header("Authorization", bearer(admin))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(roleBody("Satış destek", "USER", Set.of("PRODUCTS_VIEW", "ORDERS_VIEW", "ORDERS_CREATE"))))
+                        .content(roleUpdateBody(roleId, "Satış destek", "USER", Set.of("PRODUCTS_VIEW", "ORDERS_VIEW", "ORDERS_CREATE"))))
                 .andExpect(status().isOk());
         // Removing order visibility for one person also blocks dependent order creation after a role update.
         mvc.perform(post("/api/v1/orders").header("Authorization", bearer(exception))
@@ -244,7 +244,7 @@ class EmployeeRoleIntegrationTest {
                 .andExpect(status().isConflict());
         mvc.perform(put("/api/v1/roles/" + roleId).header("Authorization", bearer(admin))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(roleBody("Sürüm kontrol rolü", "USER", Set.of("PRODUCTS_VIEW", "ORDERS_VIEW"))))
+                        .content(roleUpdateBody(roleId, "Sürüm kontrol rolü", "USER", Set.of("PRODUCTS_VIEW", "ORDERS_VIEW"))))
                 .andExpect(status().isOk());
         mvc.perform(put(endpoint).header("Authorization", bearer(admin))
                         .contentType(MediaType.APPLICATION_JSON).content(permissionBody(changed, Set.of("PRODUCTS_VIEW"))))
@@ -285,12 +285,12 @@ class EmployeeRoleIntegrationTest {
                 "addedPermissions", Set.of("STOCK_VIEW"), "excludedPermissions", Set.of("ORDERS_VIEW")));
         mvc.perform(put("/api/v1/roles/" + roleId).header("Authorization", bearer(admin))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(roleBody("Kalıcı kişisel izin rolü", "USER", Set.of("PRODUCTS_VIEW", "STOCK_VIEW"))))
+                        .content(roleUpdateBody(roleId, "Kalıcı kişisel izin rolü", "USER", Set.of("PRODUCTS_VIEW", "STOCK_VIEW"))))
                 .andExpect(status().isOk());
         savePermissions(admin, employee(admin, "edit-preserve"), Set.of("PRODUCTS_VIEW", "STOCK_VIEW"));
         mvc.perform(put("/api/v1/roles/" + roleId).header("Authorization", bearer(admin))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(roleBody("Kalıcı kişisel izin rolü", "USER", Set.of("PRODUCTS_VIEW", "ORDERS_VIEW"))))
+                        .content(roleUpdateBody(roleId, "Kalıcı kişisel izin rolü", "USER", Set.of("PRODUCTS_VIEW", "ORDERS_VIEW"))))
                 .andExpect(status().isOk());
         mvc.perform(get("/api/v1/orders").header("Authorization", bearer(token))).andExpect(status().isForbidden());
         mvc.perform(get("/api/v1/products/999999/stock").header("Authorization", bearer(token))).andExpect(status().isNotFound());
@@ -353,6 +353,10 @@ class EmployeeRoleIntegrationTest {
         return json.readTree(result);
     }
 
+    @Autowired com.denizcan.stockorderpayment.repository.user.EmployeeRoleRepository roles;
+    private String roleUpdateBody(long id,String name,String scope,Set<String> permissions)throws Exception {
+        return json.writeValueAsString(Map.of("name",name,"scope",scope,"permissions",permissions,"version",roles.findById(id).orElseThrow().getVersion()));
+    }
     private String roleBody(String name, String scope, Set<String> permissions) throws Exception {
         return json.writeValueAsString(Map.of("name", name, "scope", scope, "permissions", permissions));
     }

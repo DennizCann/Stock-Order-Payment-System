@@ -69,7 +69,7 @@ public class BranchController {
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'STOCK_MANAGE')")
     public StockLine setQuantity(@PathVariable Long branchId, @PathVariable Long productId,
                                  @Valid @RequestBody StockQuantityRequest request, Principal principal) {
-        return inventory.setQuantity(branchId, productId, request.quantity(), principal.getName());
+        return inventory.setQuantity(branchId, productId, request.quantity(), request.version(), principal.getName());
     }
 
     @GetMapping("/movements")

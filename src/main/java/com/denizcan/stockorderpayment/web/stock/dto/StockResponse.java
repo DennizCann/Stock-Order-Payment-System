@@ -7,8 +7,12 @@ public record StockResponse(
         Long productId,
         int quantity,
         int reservedQuantity,
-        int availableQuantity
+        int availableQuantity,
+        long version
 ) {
+    public StockResponse(Long id, Long productId, int quantity, int reservedQuantity, int availableQuantity) {
+        this(id, productId, quantity, reservedQuantity, availableQuantity, 0);
+    }
 
     public static StockResponse from(Stock stock) {
         return new StockResponse(
@@ -16,7 +20,8 @@ public record StockResponse(
                 stock.getProductId(),
                 stock.getQuantity(),
                 stock.getReservedQuantity(),
-                stock.getAvailableQuantity()
+                stock.getAvailableQuantity(),
+                stock.getVersion()
         );
     }
 }

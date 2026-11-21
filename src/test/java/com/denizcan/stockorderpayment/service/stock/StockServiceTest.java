@@ -101,7 +101,7 @@ class StockServiceTest {
         Stock stock = new Stock(1L, 50);
         when(stockRepository.findByProductIdForUpdate(1L)).thenReturn(Optional.of(stock));
 
-        StockResponse response = stockService.updateQuantity(1L, new StockQuantityRequest(80));
+        StockResponse response = stockService.updateQuantity(1L, new StockQuantityRequest(80, 0L));
 
         assertThat(response.quantity()).isEqualTo(80);
         verify(inventoryTransactionService).record(

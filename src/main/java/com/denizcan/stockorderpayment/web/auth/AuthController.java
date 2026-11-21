@@ -42,7 +42,7 @@ public class AuthController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Invitation> invite(@RequestBody InviteRequest request) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
-                .body(new Invitation(accounts.invite(request.username(), request.role(), request.branchId(), request.employeeRoleId(), request.excludedPermissions(), request.addedPermissions(), request.fullName())));
+                .body(new Invitation(accounts.invite(request.username(), request.role(), request.branchId(), request.employeeRoleId(), request.excludedPermissions(), request.addedPermissions(), request.fullName(), request.roleVersion())));
     }
 
     @GetMapping("/accounts")
@@ -63,7 +63,7 @@ public class AuthController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<EmployeeAccount> updateAccount(@PathVariable Long id, @Valid @RequestBody UpdateAccountRequest request) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(accounts.updateAccount(id, request.revision(),
-                request.username(), request.fullName(), request.role(), request.branchId(), request.employeeRoleId(), request.enabled()));
+                request.username(), request.fullName(), request.role(), request.branchId(), request.employeeRoleId(), request.enabled(), request.roleVersion()));
     }
 
     @PostMapping("/activate")
@@ -79,10 +79,10 @@ public class AuthController {
     }
 
     public record InviteRequest(String username, Role role, Long branchId, Long employeeRoleId,
-                                Set<Permission> excludedPermissions, Set<Permission> addedPermissions, String fullName) {}
+                                Set<Permission> excludedPermissions, Set<Permission> addedPermissions, String fullName, Long roleVersion) {}
     public record UpdateAccountRequest(@NotBlank String revision, @NotBlank String username,
                                        @jakarta.validation.constraints.Size(max = 100) String fullName, Role role,
-                                       Long branchId, Long employeeRoleId, @NotNull Boolean enabled) {}
+                                       Long branchId, Long employeeRoleId, @NotNull Boolean enabled, Long roleVersion) {}
     public record UpdatePermissionsRequest(@NotBlank String revision,
                                            @NotEmpty Set<@NotNull Permission> permissions) {}
     public record Invitation(String token) {}

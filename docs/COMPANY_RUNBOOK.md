@@ -20,6 +20,18 @@ Put the service behind HTTPS, restrict database network access, store secrets in
 
 Keep `TRENDYOL_ENABLED=false` until an authorized test seller has accepted the adapter and the order/reconciliation workflow is ready. See [Trendyol setup and limitations](TRENDYOL_STOCK.md). Local simulator panels are development tools and must not be presented as real integrations.
 
+## Core workflow review
+
+The current core iteration can be reviewed without any marketplace or explicit branch:
+
+1. Sign in as the owner. In **Ürünler → Ürün ekle**, enter a name, SKU and initial quantity. Add optional name/value tags such as `Marka = Arçelik` and `Kategori = Ev eşyası`; price is optional.
+2. In **Ürünler → Stokları görüntüle**, check the total and centre quantity. Create an optional branch/warehouse only when needed. **Hareket oluştur** records receipts, issues or transfers and keeps totals consistent.
+3. In **Kullanıcılar → Roller ve yetkiler**, create a named role from the required actions. Global stock access and own-branch access are separate. Branch-dependent permissions require assigning a location; other roles can have no location or an optional location assignment.
+4. Add a worker, adjust personal permission additions/exclusions and activate their password link in a separate browser context. Confirm that the worker sees the permitted tasks and cannot perform forbidden API actions.
+5. Edit an existing worker's identity, location, role or personal permissions. Shared-role changes affect all its workers; personal exceptions remain individual. Use **Rolleri yenile** to reopen current role data after a stale-form conflict. Reselect a changed role when reviewing an invitation's permissions.
+
+Every worker can use **Hesabım** to update their own identity/password. The owner can issue a replacement worker password link. A username/password reset revokes old sessions; menu changes should be reviewed after a fresh login. Publishing the application for access from other computers still requires a configured server/domain/HTTPS deployment; local rehearsal instances are not a published service.
+
 ## Backup and restore rehearsal
 
 Use PostgreSQL client tools compatible with the server version. Set `PGHOST`, `PGPORT`, `PGUSER` and `PGDATABASE` for the intended database; use a protected password file or secret-injected password, rather than a password in a command argument. These are PostgreSQL client settings, separate from the application's JDBC `DB_URL`.

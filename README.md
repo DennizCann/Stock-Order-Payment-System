@@ -15,10 +15,10 @@ this is not yet a completed live-marketplace integration or a production-ready r
 
 | Module | Status | Details |
 |---|---|---|
-| Authentication and employees | Implemented | Invitations, configurable roles, personal permission exceptions, editable profiles/status, account-bound revocable JWT sessions |
+| Authentication and employees | Implemented | Owner-first setup; mixed-capability roles and personal exceptions; editable profiles/status; self-service username/password; employee reset links and revocable sessions |
 | Branches and warehouses | Implemented | Delegated viewing/management, type/name editing, archive/restore safeguards |
-| Product | Implemented | Create, edit, archive, name/value tags, filtering and consistent total quantity |
-| Stock | Implemented | Single/batch receipts and issues, atomic internal transfers, configurable movement names |
+| Product | Implemented | Name/SKU/initial quantity; optional price; editable reusable name/value tags; filtering; versioned metadata and archive/restore |
+| Stock | Implemented | Centre/location totals; single/batch receipts and issues; atomic transfers; movement names; stale-count protection |
 | Inventory history | Done | Traceable transaction log per product |
 | Order | Initial lifecycle implemented | Authenticated create/read, owner isolation, reservations, local shipment/cancellation and audit |
 | Channel integration | Partial | Demo import/sync; configurable caps and durable Trendyol quantity publication; real order import not implemented |
@@ -55,6 +55,12 @@ this is not yet a completed live-marketplace integration or a production-ready r
 | `GET` | `/api/v1/products/{id}` | `PRODUCTS_VIEW` or `STOCK_VIEW` |
 | `PUT` | `/api/v1/products/{id}` | `PRODUCTS_EDIT` |
 | `DELETE` | `/api/v1/products/{id}` | `PRODUCTS_DELETE`; archive empty product |
+| `POST` | `/api/v1/products/{id}/restore` | `PRODUCTS_EDIT` |
+
+Basic creation does not require a price or an explicitly created branch. A nonzero
+initial quantity also requires `STOCK_MANAGE`; catalogue-only creators start with zero.
+Product updates require the displayed `version` and cannot change `quantity`.
+Total quantity is returned as `null` without global `STOCK_VIEW` authority.
 
 ### Stock and inventory
 
@@ -67,6 +73,19 @@ this is not yet a completed live-marketplace integration or a production-ready r
 | `POST` | `/api/v1/products/{productId}/stock/out` | `STOCK_MANAGE` |
 | `GET` | `/api/v1/products/{productId}/inventory-transactions` | `STOCK_VIEW` |
 | `POST` | `/api/v1/inventory-operations` | `STOCK_MANAGE`, own `BRANCH_STOCK_MANAGE`, or `STOCK_TRANSFER`, depending on kind/location |
+
+The stock page shows the physical total, centre balance/reservations and combined
+branch/warehouse balance, with a location selector for details. Quantity changes
+use **Hareket oluştur**. The older absolute-count endpoints remain protected:
+`PATCH /products/{id}/stock` requires the last-read `version`; existing branch
+balances updated through `PUT /branches/{branchId}/stock/{productId}` also require
+their last-read version. A stale or missing version returns `409`.
+
+Shared-role updates through `PUT /roles/{id}` require the version returned by the
+role list. Invitations and employee-profile updates accept `roleVersion` as a
+precondition on the selected role; the UI always sends it for custom roles, so a
+changed template cannot silently grant different permissions. Legacy API callers
+that omit this optional precondition use the role's current permissions.
 
 ### Orders and operations
 

@@ -105,11 +105,11 @@ class ProductInventoryWorkflowIntegrationTest {
         String employee = employee(role, null);
         move(employee, id, null, "IN", 1, 403);
         mvc.perform(put("/api/v1/roles/" + role.getId()).header("Authorization", admin).contentType(MediaType.APPLICATION_JSON)
-                .content(json.writeValueAsString(Map.of("name", role.getName(), "scope", "USER",
+                .content(json.writeValueAsString(Map.of("name", role.getName(), "scope", "USER", "version", roles.findById(role.getId()).orElseThrow().getVersion(),
                         "permissions", List.of("STOCK_VIEW", "STOCK_MANAGE"))))).andExpect(status().isOk());
         move(employee, id, null, "IN", 1, 201);
         mvc.perform(put("/api/v1/roles/" + role.getId()).header("Authorization", admin).contentType(MediaType.APPLICATION_JSON)
-                .content(json.writeValueAsString(Map.of("name", role.getName(), "scope", "USER",
+                .content(json.writeValueAsString(Map.of("name", role.getName(), "scope", "USER", "version", roles.findById(role.getId()).orElseThrow().getVersion(),
                         "permissions", List.of("STOCK_VIEW"))))).andExpect(status().isOk());
         move(employee, id, null, "IN", 1, 403);
         assertQuantity(admin, id, 1);

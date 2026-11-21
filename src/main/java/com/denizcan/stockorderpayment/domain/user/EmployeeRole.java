@@ -28,6 +28,10 @@ public class EmployeeRole {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @jakarta.persistence.Version
+    @Column(nullable = false)
+    private long version;
+
     @Column(nullable = false, length = 64)
     private String name;
 

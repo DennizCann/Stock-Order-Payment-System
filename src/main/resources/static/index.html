@@ -142,8 +142,8 @@
     .edit-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
     .edit-grid form { padding: 0 19px 19px; }
     .edit-grid button { justify-self: start; }
-    #productForm, #stockForm { padding: 0 19px 19px; }
-    #productForm button, #stockForm button { justify-self: start; }
+    #productForm { padding: 0 19px 19px; }
+    #productForm button { justify-self: start; }
     @media (max-width: 1120px) {
       .channel-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 15px; }
       .channel-list li + li { border-top: 0; }
@@ -218,6 +218,18 @@
       .role-table tr { padding:12px;border-top:1px solid #edf0f6; }
       .role-table td { padding:8px;border:0; }
       .role-table td::before { content:attr(data-label);display:block;color:var(--muted);font-size:.75rem;margin-bottom:4px; }
+    }
+    .stock-table { table-layout:fixed;white-space:normal; }
+    .stock-table th,.stock-table td { overflow-wrap:anywhere;vertical-align:top; }
+    .stock-table th:first-child { width:28%; }
+    .stock-table .muted { font-size:.78rem;line-height:1.6; }
+    @media(max-width:800px) {
+      .stock-table,.stock-table tbody {display:block;}
+      .stock-table thead {display:none;}
+      .stock-table tr {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));padding:12px;border-top:1px solid var(--border);}
+      .stock-table td {min-width:0;border:0;padding:8px;text-align:left;}
+      .stock-table td:first-child,.stock-table td:last-child {grid-column:1 / -1;}
+      .stock-table td::before {content:attr(data-label);display:block;color:var(--muted);font-size:.75rem;margin-bottom:4px;}
     }
   </style>
 </head>
@@ -389,49 +401,18 @@
 
         <section id="inventory" data-view data-parent="products" hidden aria-labelledby="stock-page-title">
           <a class="section-back" href="#products">← Ürünler</a>
-          <div class="hero"><div><p class="eyebrow">Operasyon paneli</p><h1 id="stock-page-title">Stok</h1><p class="muted">Ürün ekle, stok miktarlarını görüntüle ve düzenle.</p></div><button class="secondary" data-refresh type="button">Yenile</button></div>
+          <div class="hero"><div><h1 id="stock-page-title">Stok</h1><p class="muted">Toplam adedi ve ürünlerinin konumlara dağılımını gör.</p></div><button class="secondary" data-refresh type="button">Yenile</button></div>
           <section class="card" aria-labelledby="inventory-title">
-          <header class="card-head"><div><h2 id="inventory-title">Genel stok</h2><p class="muted">Toplam adet merkez ve şubelerin toplamıdır. Ayrılmış ve satılabilir adetler merkez içindir.</p></div><a href="#movements">Giriş / çıkış oluştur</a></header>
-          <div class="table-wrap" role="region" aria-label="Stok tablosu" tabindex="0">
-            <table>
-              <thead><tr><th scope="col">ID</th><th scope="col">SKU</th><th scope="col">Ürün</th><th scope="col" class="numeric">Toplam adet</th><th scope="col" class="numeric">Merkez</th><th scope="col" class="numeric">Ayrılmış</th><th scope="col" class="numeric">Satılabilir</th><th scope="col" data-admin-only hidden>İşlem</th></tr></thead>
-              <tbody id="stockRows"></tbody>
-            </table>
-          </div>
-          </section>
-          <div class="section" data-admin-only hidden>
-            <section class="card" aria-labelledby="stock-adjust-title">
-              <header class="card-head"><h2 id="stock-adjust-title">Merkez stok düzeltmesi</h2><a href="#product-list">Ürün ekle ve etiketleri yönet</a></header>
-              <form id="stockForm" class="form-stack" hidden>
-                <h3 id="stock-title">Stok düzenle</h3>
-                <p id="selectedStockProduct"></p>
-                <label>Fiziksel stok<input id="stockQuantity" type="number" min="0" required></label>
-                <button type="submit" class="primary">Stoku kaydet</button>
-              </form>
-            </section>
-          </div>
-          <section class="card section account-form" data-admin-only hidden aria-labelledby="branch-stock-title">
-            <header class="card-head"><h2 id="branch-stock-title">Şube stoğu</h2></header>
-            <form id="branchStockForm" class="form-stack">
-              <label>Şube<select id="inventoryBranch" required></select></label>
-              <label>Ürün<select id="inventoryBranchProduct" required></select></label>
-              <label>Yeni stok adedi<input id="inventoryBranchQuantity" type="number" min="0" max="2147483647" required></label>
-              <button class="primary" type="submit">Şube stoğunu kaydet</button>
-            </form>
-            <div class="table-wrap" role="region" aria-label="Seçili şubenin stoğu" tabindex="0">
-              <table>
-                <thead><tr><th scope="col">Ürün</th><th scope="col">SKU</th><th scope="col" class="numeric">Adet</th></tr></thead>
-                <tbody id="branchStockRows"></tbody>
-              </table>
+            <header class="card-head"><div><h2 id="inventory-title">Genel stok</h2><p class="muted">Toplam = merkez + şubeler ve depolar. Ayrılmış ürünler fiziksel toplama dahildir.</p></div><a href="#movement-create" data-destination="movement-create">Hareket oluştur →</a></header>
+            <div class="table-wrap" role="region" aria-label="Stok tablosu" tabindex="0">
+              <table class="stock-table"><thead><tr><th scope="col">Ürün</th><th scope="col">Toplam adet</th><th scope="col">Merkez</th><th scope="col">Şube / depo toplamı</th><th scope="col">İşlem</th></tr></thead><tbody id="stockRows"></tbody></table>
             </div>
           </section>
-          <section class="card section" hidden aria-labelledby="branch-movements-title">
-            <header class="card-head"><h2 id="branch-movements-title">Son şube stok hareketleri</h2></header>
-            <div class="table-wrap" role="region" aria-label="Şube stok hareketleri" tabindex="0">
-              <table>
-                <thead><tr><th scope="col">Zaman</th><th scope="col">Şube</th><th scope="col">Ürün</th><th scope="col">Çalışan</th><th scope="col">İşlem</th><th scope="col" class="numeric">Değişim</th><th scope="col" class="numeric">Kalan</th></tr></thead>
-                <tbody id="branchMovementRows"></tbody>
-              </table>
+          <section class="card section account-form" aria-labelledby="branch-stock-title">
+            <header class="card-head"><div><h2 id="branch-stock-title">Konuma göre stok</h2><p class="muted">Şube oluşturmak zorunlu değil. İlk ürünler merkezde tutulur.</p></div></header>
+            <div class="form-stack"><label>Şube / depo<select id="inventoryBranch"></select></label></div>
+            <div class="table-wrap" role="region" aria-label="Seçili konumun stoğu" tabindex="0">
+              <table class="stock-table"><thead><tr><th scope="col">Ürün</th><th scope="col">SKU</th><th scope="col">Adet</th></tr></thead><tbody id="branchStockRows"></tbody></table>
             </div>
           </section>
         </section>
@@ -568,7 +549,7 @@
         <section id="accounts" data-view data-admin-view hidden aria-labelledby="accounts-title">
           <div class="hero"><div><p class="eyebrow">Yönetim paneli</p><h1 id="accounts-title">Kullanıcılar</h1><p class="muted">Çalışanlar için hesap oluştur ve parola belirleme bağlantısı ver.</p></div></div>
           <section class="card account-form section" aria-labelledby="employee-role-title">
-            <header class="card-head"><div><h2 id="employee-role-title">Roller ve yetkiler</h2><p class="muted">Rolü kullanan çalışanların izinleri birlikte güncellenir.</p></div></header>
+            <header class="card-head"><div><h2 id="employee-role-title">Roller ve yetkiler</h2><p class="muted">Rolü kullanan çalışanların izinleri birlikte güncellenir.</p></div><button id="refreshRoles" class="secondary" type="button">Rolleri yenile</button></header>
             <form id="employeeRoleForm" class="form-stack">
               <label>Rol adı<input id="employeeRoleName" maxlength="64" required></label>
               <input id="employeeRoleScope" type="hidden" value="USER">
@@ -600,7 +581,7 @@
                 <div id="invitePermissions"></div>
                 <p class="muted">Rolün hazır izinlerini bu çalışan için artırıp azaltabilirsin.</p>
               </fieldset>
-              <label id="inviteBranchField" hidden>Şube
+              <label id="inviteBranchField" hidden>Şube / depo (isteğe bağlı)
                 <select id="inviteBranch" disabled></select>
               </label>
               <p id="inviteBranchEmpty" class="muted" hidden>Önce Şubeler bölümünden bir şube ekle.</p>
@@ -744,7 +725,7 @@
       RELEASE: 'Ayrılan stoğu serbest bırakma', CONSUME: 'Ayrılan stoğu düşme'
     };
     const recentOrderLimit = 6;
-    let selectedStockProductId = null;
+    let pendingMovementSelection = null;
     let branchStock = [];
     let branchStockRequest = 0;
     let employeeStockRequest = 0;
@@ -769,6 +750,9 @@
     let employeeRoles = [];
     let permissionOptions = [];
     let editingRoleId = null;
+    let editingRoleVersion = null;
+    let inviteRoleVersion = null;
+    let profileRoleVersion = null;
     let editingEmployee = null;
     let employeeListRequest = 0;
     let activationToken = '';
@@ -886,6 +870,7 @@
 
     function updateProfileBranch() {
       const selected=profileRoleSelection();const role=employeeRoles.find(r=>r.id===selected.employeeRoleId);
+      profileRoleVersion=role?.version ?? null;
       const required=selected.role==='BRANCH_EMPLOYEE'||(role?.permissions||[]).some(p=>ownBranchPermissionCodes.includes(p));
       $('profileBranchField').hidden=false;$('profileBranch').disabled=false;$('profileBranch').required=required;
     }
@@ -973,6 +958,7 @@
 
     function resetRoleForm() {
       editingRoleId = null;
+      editingRoleVersion = null;
       $('employeeRoleForm').reset();
       $('employeeRoleScope').disabled = false;
       $('employeeRoleScope').value = 'USER';
@@ -1011,6 +997,7 @@
         edit.textContent = 'Düzenle';
         edit.addEventListener('click', () => {
           editingRoleId = role.id;
+          editingRoleVersion = role.version;
           $('employeeRoleName').value = role.name;
           $('employeeRoleScope').value = role.scope;
           $('employeeRoleScope').disabled = true;
@@ -1053,7 +1040,7 @@
       }
       document.title = view.querySelector('h1').textContent + ' | Satış Operasyon Merkezi';
       window.scrollTo(0, 0);
-      if (isAdmin && view.id === 'inventory') {
+      if (can('STOCK_VIEW') && view.id === 'inventory') {
         const session = token;
         refreshBranchInventory().catch(error => {
           if (token === session && !view.hidden) notify(error.message, true);
@@ -1438,7 +1425,15 @@
       for (const select of $('additionalMovementItems').querySelectorAll('select')) fillMovementProducts(select);
       $('movementEditor').hidden = !can('STOCK_MANAGE') && !can('BRANCH_STOCK_MANAGE') && !can('STOCK_TRANSFER');
       updateMovementFields();
+      applyMovementSelection();
       renderMovementHistory();
+    }
+
+    function applyMovementSelection() {
+      if (!pendingMovementSelection) return;
+      $('movementProduct').value=String(pendingMovementSelection.productId);
+      $('movementLocation').value=pendingMovementSelection.location;
+      pendingMovementSelection=null;
     }
 
     function renderMovementHistory() {
@@ -1522,6 +1517,7 @@
       const { scope, employeeRole } = selectedInviteRole();
       const base = employeeRole?.permissions || permissionOptions.filter(option => option.scope === scope && option.defaultGranted !== false).map(option => option.code);
       const inputs = [...$('invitePermissions').querySelectorAll('input')];
+      if (!preserveSelection || !inputs.length) inviteRoleVersion=employeeRole?.version ?? null;
       const selected = preserveSelection && inputs.length ? inputs.filter(i => i.checked).map(i => i.value) : base;
       renderPermissionChoices('invitePermissions', scope, selected, base);
     }
@@ -1554,7 +1550,8 @@
     function updateInviteBranchLocation() {
       const own=[...$('invitePermissions').querySelectorAll('input:checked')].some(i=>ownBranchPermissionCodes.includes(i.value));
       const required=selectedInviteRole().scope==='BRANCH_EMPLOYEE'||own;
-      $('inviteBranchField').hidden=!required;$('inviteBranch').disabled=!required;$('inviteBranch').required=required;
+      $('inviteBranchField').hidden=false;$('inviteBranch').disabled=!required && $('inviteBranch').options.length<=1;$('inviteBranch').required=required;
+      $('inviteBranchField').firstChild.textContent=required?'Şube / depo (zorunlu)':'Şube / depo (isteğe bağlı)';
       $('inviteBranchEmpty').hidden=!required||$('inviteBranch').options.length>1;
     }
 
@@ -1603,7 +1600,6 @@
       }
       const active = branches.filter(b => b.active !== false);
       setOptions('inviteBranch', 'Şube / depo seç', active, branch => branch.name);
-      setOptions('inventoryBranch', 'Şube / depo seç', active, branch => branch.name);
       updateInviteBranchLocation();
     }
 
@@ -1616,28 +1612,25 @@
         cell(row, line.productName);
         cell(row, line.sku);
         cell(row, numbers.format(line.quantity), 'numeric');
+        [...row.cells].forEach((c,i)=>{c.dataset.label=['Ürün','SKU','Adet'][i];});
         body.append(row);
       }
     }
 
-    function showBranchQuantity() {
-      const productId = Number($('inventoryBranchProduct').value);
-      $('inventoryBranchQuantity').value = branchStock.find(line => line.productId === productId)?.quantity ?? '';
-    }
-
     async function refreshAdminBranchStock() {
-      const branchId = $('inventoryBranch').value;
-      const session = token;
-      const request = ++branchStockRequest;
+      const branchId = $('inventoryBranch').value, session = token, request = ++branchStockRequest;
       const lines = branchId ? await api('/branches/' + branchId + '/stock') : [];
-      if (token !== session || !isAdmin || request !== branchStockRequest) return;
+      if (token !== session || !can('STOCK_VIEW') || request !== branchStockRequest) return;
       branchStock = lines;
-      showBranchQuantity();
-      renderBranchStock('branchStockRows', lines, branchId ? 'Bu şubede henüz stok yok.' : 'Stoğu görmek için şube seç.');
+      renderBranchStock('branchStockRows', lines, branchId ? 'Bu konumda henüz stok yok.' : 'Konuma göre incelemek için şube / depo seç.');
     }
 
     async function refreshBranchInventory() {
-      if (isAdmin) await refreshAdminBranchStock();
+      if (!can('STOCK_VIEW')) return;
+      const session = token, locations = await api('/stock-movements/locations');
+      if (token !== session || !can('STOCK_VIEW')) return;
+      setOptions('inventoryBranch', 'Şube / depo seç', locations.filter(l => l.branchId != null), l => l.name, l => l.branchId);
+      await refreshAdminBranchStock();
     }
 
     async function refreshEmployeeStock() {
@@ -1674,34 +1667,25 @@
       }
       const body = $('stockRows');
       body.replaceChildren();
-      if (!stockRows.length) emptyRow(body, 'Henüz ürün yok.', isAdmin ? 8 : 7);
+      if (!stockRows.length) emptyRow(body, 'Henüz ürün yok. Ürünler bölümünden ilk ürününü ekleyebilirsin.', 5);
       let outOfStock = 0;
       for (const { product, stock } of stockRows) {
         const row = document.createElement('tr');
-        cell(row, product.id);
-        cell(row, product.sku);
-        cell(row, product.name);
-        cell(row, numbers.format(product.quantity || 0), 'numeric');
-        cell(row, stock ? numbers.format(stock.quantity) : 'Tanımlanmamış', 'numeric');
-        cell(row, stock ? numbers.format(stock.reservedQuantity) : null, 'numeric');
-        cell(row, stock ? numbers.format(stock.availableQuantity) : null, 'numeric');
-        if (isAdmin) {
-          const edit = document.createElement('button');
-          edit.type = 'button';
-          edit.className = 'secondary';
-          edit.textContent = 'Stok düzenle';
-          edit.addEventListener('click', () => {
-            selectedStockProductId = product.id;
-            $('selectedStockProduct').textContent = product.name + ' · ' + product.sku;
-            $('stockQuantity').value = stock?.quantity ?? 0;
-            $('stockForm').hidden = false;
-            $('stockForm').scrollIntoView({ behavior: 'smooth', block: 'center' });
-            $('stockQuantity').focus();
-          });
-          cell(row, edit);
-        }
+        const identity = document.createElement('div'), name = document.createElement('strong'), sku = document.createElement('div');
+        name.textContent = product.name; sku.textContent = product.sku; sku.className = 'muted'; identity.append(name,sku); cell(row,identity);
+        cell(row, numbers.format(product.quantity ?? 0), 'numeric');
+        const centre = document.createElement('div'), count = document.createElement('strong'), availability = document.createElement('div');
+        count.textContent = numbers.format(stock?.quantity ?? 0); availability.className='muted';
+        availability.textContent = 'Ayrılmış: ' + numbers.format(stock?.reservedQuantity ?? 0) + ' · Satılabilir: ' + numbers.format(stock?.availableQuantity ?? 0);
+        centre.append(count,availability); cell(row,centre);
+        cell(row, numbers.format((product.quantity ?? 0) - (stock?.quantity ?? 0)), 'numeric');
+        if (can('STOCK_MANAGE') || can('STOCK_TRANSFER')) {
+          const open = document.createElement('a'); open.href='#movement-create'; open.textContent='Hareket oluştur';
+          open.addEventListener('click',()=>{ pendingMovementSelection={productId:product.id,location:'central'}; }); cell(row,open);
+        } else cell(row,'Görüntüleme');
+        [...row.cells].forEach((c,i)=>{ c.dataset.label=['Ürün','Toplam adet','Merkez','Şube / depo toplamı','İşlem'][i]; });
         body.append(row);
-        if (stock?.availableQuantity === 0) outOfStock++;
+        if ((stock?.availableQuantity ?? 0) === 0) outOfStock++;
       }
       const today = calendarDays.format(new Date());
       const todayOrders = loadedOrders.filter(order => {
@@ -1718,9 +1702,6 @@
         ? (await api('/products?includeArchived=true')).filter(p=>!p.active) : [];
       renderTagSuggestions();
       renderProducts(products);
-      if (isAdmin) {
-        setOptions('inventoryBranchProduct', 'Ürün seç', products, product => product.name + ' · ' + product.sku);
-      }
     }
 
     async function action(button, work, onError = error => notify(error.message, true)) {
@@ -1795,16 +1776,13 @@
       closeEmployeeEditor();
       employeeListRequest++;
       $('employeeRows').replaceChildren();
-      selectedStockProductId = null;
-      $('stockForm').hidden = true;
+      pendingMovementSelection = null;
       $('invitationLink').value = '';
       $('invitationResult').hidden = true;
       $('inviteForm').reset();
       $('branchForm').reset();
-      $('branchStockForm').reset();
       $('branchSaleForm').reset();
       $('branchStockRows').replaceChildren();
-      $('branchMovementRows').replaceChildren();
       $('employeeStockRows').replaceChildren();
       branchStock = [];
       pendingBranchSale = null;
@@ -1826,7 +1804,7 @@
     document.querySelectorAll('[data-refresh]').forEach(button => {
       button.addEventListener('click', () => action(button, async () => {
         await refresh();
-        if (isAdmin && button.closest('#inventory')) await refreshBranchInventory();
+        if (can('STOCK_VIEW') && button.closest('#inventory')) await refreshBranchInventory();
         notify('Panel güncellendi.');
       }));
     });
@@ -1878,7 +1856,7 @@
       action(event.submitter, async () => {
         const role = profileRoleSelection();
         await api('/auth/accounts/' + employee.id, 'PUT', { revision: employee.revision, username: $('profileUsername').value.trim(),
-          fullName: $('profileFullName').value.trim() || null, role: role.role, employeeRoleId: role.employeeRoleId,
+          fullName: $('profileFullName').value.trim() || null, role: role.role, employeeRoleId: role.employeeRoleId, roleVersion: profileRoleVersion,
           branchId: $('profileBranch').value ? Number($('profileBranch').value) : null,
           enabled: $('profileEnabled').value === 'true' });
         closeEmployeeProfile(); await refreshEmployees(); notify('Çalışan bilgileri güncellendi.');
@@ -1886,31 +1864,8 @@
     });
 
     $('inventoryBranch').addEventListener('change', () => {
-      branchStock = [];
-      $('inventoryBranchQuantity').value = '';
-      $('branchStockRows').replaceChildren();
-      const session = token;
-      refreshAdminBranchStock().catch(error => {
-        if (token === session) notify(error.message, true);
-      });
-    });
-    $('inventoryBranchProduct').addEventListener('change', showBranchQuantity);
-    $('branchStockForm').addEventListener('submit', event => {
-      event.preventDefault();
-      action(event.submitter, async () => {
-        const session = token;
-        const branchId = $('inventoryBranch').value;
-        const productId = $('inventoryBranchProduct').value;
-        const quantity = Number($('inventoryBranchQuantity').value);
-        await api('/branches/' + branchId + '/stock/' + productId, 'PUT', { quantity });
-        if (token !== session || !isAdmin) return;
-        try {
-          await refreshBranchInventory();
-          notify('Şube stoğu kaydedildi.');
-        } catch (error) {
-          notify('Şube stoğu kaydedildi. Listeler güncellenemedi.', true);
-        }
-      });
+      branchStock = []; $('branchStockRows').replaceChildren();
+      refreshAdminBranchStock().catch(error => notify(error.message, true));
     });
     $('refreshEmployeeStock').addEventListener('click', event => action(event.currentTarget, refreshEmployeeStock));
     $('branchSaleForm').addEventListener('submit', event => {
@@ -1937,6 +1892,9 @@
     });
 
     $('refreshEmployees').addEventListener('click', event => action(event.currentTarget, refreshEmployees));
+    $('refreshRoles').addEventListener('click', event => action(event.currentTarget, async () => {
+      resetRoleForm(); await refreshRoles(); notify('Roller yenilendi. Düzenlemek istediğin rolü listeden seç.');
+    }));
     $('cancelEmployeeEdit').addEventListener('click', closeEmployeeEditor);
     $('employeePermissionForm').addEventListener('submit', event => {
       event.preventDefault();
@@ -1982,6 +1940,7 @@
           scope: $('employeeRoleScope').value,
           permissions: selected
         };
+        if (editingRoleId !== null) request.version=editingRoleVersion;
         const path = editingRoleId === null ? '/roles' : '/roles/' + editingRoleId;
         const saved = await api(path, editingRoleId === null ? 'POST' : 'PUT', request);
         if (token !== session || !isAdmin) return;
@@ -2009,7 +1968,7 @@
           excludedPermissions: choices.filter(input => !input.checked && input.dataset.base === 'true').map(input => input.value),
           addedPermissions: choices.filter(input => input.checked && input.dataset.base === 'false').map(input => input.value)
         };
-        if (employeeRole) request.employeeRoleId = employeeRole.id;
+        if (employeeRole) { request.employeeRoleId = employeeRole.id; request.roleVersion=inviteRoleVersion; }
         if (!$('inviteBranch').disabled && $('inviteBranch').value) request.branchId = Number($('inviteBranch').value);
         const invitation = await api('/auth/accounts', 'POST', request);
         if (!isAdmin) return;
@@ -2269,19 +2228,6 @@
         $('movementQuantity').value = ''; $('movementReason').value = ''; $('movementNote').value = '';
         await Promise.all([refreshMovements(), refresh(), hasAssignedBranch && can('BRANCH_STOCK_VIEW') ? refreshEmployeeStock() : Promise.resolve()]);
         notify('Stok hareketi ve ürün adedi güncellendi.');
-      });
-    });
-    $('stockForm').addEventListener('submit', event => {
-      event.preventDefault();
-      action(event.submitter, async () => {
-        const productId = selectedStockProductId;
-        if (productId === null) throw new Error('Önce listeden bir ürün seç.');
-        const stock = await readStock(productId);
-        await api('/products/' + productId + '/stock', stock ? 'PATCH' : 'POST', {
-          quantity: Number($('stockQuantity').value)
-        });
-        notify('Stok güncellendi. Kanalları eşitlemek için stokları gönder.');
-        await refresh();
       });
     });
   </script>

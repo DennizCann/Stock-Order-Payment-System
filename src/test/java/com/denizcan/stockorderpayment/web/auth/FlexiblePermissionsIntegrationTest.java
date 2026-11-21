@@ -72,7 +72,7 @@ class FlexiblePermissionsIntegrationTest {
         return new Worker(account.path("id").asLong(),name,login(name,"deneme123456789"));
     }
     private JsonNode role(String scope,List<String> permissions)throws Exception{return call(admin,"POST","/roles",Map.of("name","Role "+UUID.randomUUID(),"scope",scope,"permissions",permissions),201);}
-    private void updateRole(JsonNode role,List<String> permissions,int status)throws Exception {call(admin,"PUT","/roles/"+role.path("id").asLong(),Map.of("name",role.path("name").asText(),"scope",role.path("scope").asText(),"permissions",permissions),status);}
+    private void updateRole(JsonNode role,List<String> permissions,int status)throws Exception {call(admin,"PUT","/roles/"+role.path("id").asLong(),Map.of("name",role.path("name").asText(),"scope",role.path("scope").asText(),"permissions",permissions,"version",role.path("version").asLong()),status);}
     private JsonNode account(long id)throws Exception {for(JsonNode p:call(admin,"GET","/auth/accounts",null,200))if(p.path("id").asLong()==id)return p;throw new AssertionError();}
     private void updateAccount(JsonNode account,JsonNode role,Long branch,int expected)throws Exception {
         var body=new HashMap<String,Object>();body.put("revision",account.path("revision").asText());body.put("username",account.path("username").asText());body.put("role",role.path("scope").asText());body.put("employeeRoleId",role.path("id").asLong());body.put("branchId",branch);body.put("enabled",true);

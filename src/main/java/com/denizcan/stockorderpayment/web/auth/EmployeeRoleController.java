@@ -62,8 +62,11 @@ public class EmployeeRoleController {
     @Transactional
     public RoleResponse update(@PathVariable Long id, @Valid @RequestBody RoleRequest request) {
         validatePermissions(request);
-        EmployeeRole role = roles.findById(id).orElseThrow(() ->
+        EmployeeRole role = roles.findForUpdate(id).orElseThrow(() ->
                 new ResponseStatusException(HttpStatus.NOT_FOUND, "Rol bulunamadı."));
+        if (request.version() == null || request.version() != role.getVersion()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Rol değişmiş. Listeyi yenileyip tekrar düzenle.");
+        }
         if (role.getScope() != request.scope()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Mevcut rolün çalışma alanı değiştirilemez. Diğer alan için yeni rol oluştur.");
@@ -111,11 +114,12 @@ public class EmployeeRoleController {
     }
 
     public record RoleRequest(@NotBlank @Size(max = 64) String name, @NotNull Role scope,
-                              @NotEmpty Set<@NotNull Permission> permissions) {}
+                              @NotEmpty Set<@NotNull Permission> permissions,
+                              @jakarta.validation.constraints.PositiveOrZero Long version) {}
 
-    public record RoleResponse(Long id, String name, Role scope, Set<Permission> permissions) {
+    public record RoleResponse(Long id, String name, Role scope, Set<Permission> permissions, long version) {
         static RoleResponse from(EmployeeRole role) {
-            return new RoleResponse(role.getId(), role.getName(), role.getScope(), Set.copyOf(role.getPermissions()));
+            return new RoleResponse(role.getId(), role.getName(), role.getScope(), Set.copyOf(role.getPermissions()), role.getVersion());
         }
     }
 

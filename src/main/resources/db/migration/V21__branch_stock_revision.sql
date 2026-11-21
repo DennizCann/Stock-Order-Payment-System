@@ -1,0 +1,1 @@
+ALTER TABLE branch_stock ADD COLUMN version BIGINT NOT NULL DEFAULT 0;
