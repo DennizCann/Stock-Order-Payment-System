@@ -60,6 +60,7 @@ public class BranchInventoryService {
             line.setQuantity(quantity);
             stock.save(line);
             movements.save(new BranchStockMovement(line, actor, previousQuantity, null));
+            adjustTotal(productId, (long) quantity - previousQuantity);
         }
         return StockLine.from(line);
     }
@@ -85,6 +86,7 @@ public class BranchInventoryService {
                     "Şube stoğu yetersiz. Mevcut adet: " + previousQuantity + ".");
         }
         line.setQuantity(previousQuantity - quantity);
+        adjustTotal(productId, -quantity);
         try {
             return Movement.from(movements.saveAndFlush(new BranchStockMovement(line, actor, previousQuantity, saleId)));
         } catch (DataIntegrityViolationException exception) {
@@ -95,6 +97,31 @@ public class BranchInventoryService {
     @Transactional(readOnly = true)
     public List<Movement> recentMovements() {
         return movements.findTop100ByOrderByCreatedAtDescIdDesc().stream().map(Movement::from).toList();
+    }
+
+    @Transactional
+    public void move(Long branchId, Long productId, int quantity, boolean incoming,
+                     String reason, String note, String username) {
+        User actor = activeUser(username);
+        Branch branch = branches.findForUpdate(branchId).orElseThrow(BranchInventoryService::branchNotFound);
+        BranchStock line = stock.findForUpdate(branchId, productId).orElseGet(() ->
+                new BranchStock(branch, products.findById(productId).orElseThrow(() ->
+                        new ResponseStatusException(HttpStatus.NOT_FOUND, "Ürün bulunamadı.")), 0));
+        int previous = line.getQuantity();
+        long next = (long) previous + (incoming ? quantity : -quantity);
+        if (next < 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "Şube stoğu yetersiz.");
+        if (next > Integer.MAX_VALUE) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Stok adedi desteklenen sınırı aşıyor.");
+        line.setQuantity((int) next);
+        stock.save(line);
+        BranchStockMovement movement = new BranchStockMovement(line, actor, previous, null);
+        movement.describe(reason, note);
+        movements.save(movement);
+        adjustTotal(productId, next - previous);
+    }
+
+    private void adjustTotal(Long productId, long delta) {
+        if (products.adjustQuantity(productId, delta) != 1) throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "Ürün arşivlenmiş veya stok toplamı geçersiz.");
     }
 
     private List<StockLine> stockLines(Long branchId) {

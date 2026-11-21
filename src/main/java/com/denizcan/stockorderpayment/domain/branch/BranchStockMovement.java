@@ -47,6 +47,17 @@ public class BranchStockMovement {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    @Column(length = 100)
+    private String reason;
+
+    @Column(length = 255)
+    private String note;
+
+    public void describe(String reason, String note) {
+        this.reason = reason;
+        this.note = note;
+    }
+
     public BranchStockMovement(BranchStock stock, User actor, int previousQuantity, UUID saleId) {
         this.stock = stock;
         this.actor = actor;

@@ -8,6 +8,14 @@ import com.denizcan.stockorderpayment.service.auth.AuthService;
 import com.denizcan.stockorderpayment.web.auth.dto.AuthResponse;
 import com.denizcan.stockorderpayment.web.auth.dto.LoginRequest;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import com.denizcan.stockorderpayment.service.auth.AccountService.EmployeeAccount;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
@@ -37,6 +45,20 @@ public class AuthController {
                 .body(new Invitation(accounts.invite(request.username(), request.role(), request.branchId(), request.employeeRoleId(), request.excludedPermissions(), request.addedPermissions())));
     }
 
+    @GetMapping("/accounts")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<EmployeeAccount>> employees() {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(accounts.employees());
+    }
+
+    @PutMapping("/accounts/{id}/permissions")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<EmployeeAccount> updatePermissions(
+            @PathVariable Long id, @Valid @RequestBody UpdatePermissionsRequest request) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(accounts.updatePermissions(id, request.revision(), request.permissions()));
+    }
+
     @PostMapping("/activate")
     public ResponseEntity<Void> activate(@RequestBody ActivateRequest request) {
         accounts.activate(request.token(), request.password());
@@ -45,6 +67,8 @@ public class AuthController {
 
     public record InviteRequest(String username, Role role, Long branchId, Long employeeRoleId,
                                 Set<Permission> excludedPermissions, Set<Permission> addedPermissions) {}
+    public record UpdatePermissionsRequest(@NotBlank String revision,
+                                           @NotEmpty Set<@NotNull Permission> permissions) {}
     public record Invitation(String token) {}
     public record ActivateRequest(String token, String password) {}
 }

@@ -44,7 +44,8 @@ public class EmployeeRoleController {
     @GetMapping("/permissions")
     public List<PermissionOption> permissions() {
         return Arrays.stream(Permission.values())
-                .map(permission -> new PermissionOption(permission, permission.label(), permission.scope()))
+                .map(permission -> new PermissionOption(permission, permission.label(), permission.scope(),
+                        Permission.defaultsFor(permission.scope()).contains(permission)))
                 .toList();
     }
 
@@ -80,7 +81,8 @@ public class EmployeeRoleController {
 
     private void validatePermissions(RoleRequest request) {
         if (request.scope() == Role.ADMIN
-                || !Permission.defaultsFor(request.scope()).containsAll(request.permissions())
+                || !Permission.availableFor(request.scope()).containsAll(request.permissions())
+                || !Permission.validDependencies(request.permissions())
                 || request.permissions().contains(Permission.BRANCH_SALE_CREATE)
                     && !request.permissions().contains(Permission.BRANCH_STOCK_VIEW)
                 || request.permissions().contains(Permission.ORDERS_CREATE)
@@ -99,5 +101,5 @@ public class EmployeeRoleController {
         }
     }
 
-    public record PermissionOption(Permission code, String label, Role scope) {}
+    public record PermissionOption(Permission code, String label, Role scope, boolean defaultGranted) {}
 }

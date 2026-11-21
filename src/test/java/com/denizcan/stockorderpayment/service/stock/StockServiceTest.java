@@ -140,17 +140,19 @@ class StockServiceTest {
         StockResponse response = stockService.stockIn(1L, new StockMovementRequest(15, "purchase"));
 
         assertThat(response.quantity()).isEqualTo(35);
-        verify(inventoryTransactionService).record(
+        verify(inventoryTransactionService).recordMovement(
                 eq(1L),
                 eq(InventoryTransactionType.STOCK_IN),
                 eq(20),
                 eq(35),
-                eq("purchase")
+                eq("purchase"),
+                org.mockito.ArgumentMatchers.isNull()
         );
     }
 
     @Test
     void reserve_shouldIncreaseReservedAndRecordReservation() {
+        when(productRepository.adjustQuantity(1L, 0)).thenReturn(1);
         Stock stock = new Stock(1L, 20);
         when(stockRepository.findByProductIdForUpdate(1L)).thenReturn(Optional.of(stock));
 

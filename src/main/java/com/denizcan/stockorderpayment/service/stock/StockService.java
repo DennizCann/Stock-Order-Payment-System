@@ -82,15 +82,19 @@ public class StockService {
                 .orElseThrow(() -> NotFoundException.stock(productId));
 
         int previous = stock.getQuantity();
-        int updated = previous + request.quantity();
+        long total = (long) previous + request.quantity();
+        if (total > Integer.MAX_VALUE) throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.BAD_REQUEST, "Stok adedi desteklenen sınırı aşıyor.");
+        int updated = (int) total;
         stock.setQuantity(updated);
 
-        inventoryTransactionService.record(
+        inventoryTransactionService.recordMovement(
                 productId,
                 InventoryTransactionType.STOCK_IN,
                 previous,
                 updated,
-                request.note() != null ? request.note() : "Stock in"
+                request.note() != null ? request.note() : "Stock in",
+                request.reason()
         );
 
         log.info("Stock-in productId={} amount={} newQuantity={}", productId, request.quantity(), updated);
@@ -114,12 +118,13 @@ public class StockService {
         int updated = previous - request.quantity();
         stock.setQuantity(updated);
 
-        inventoryTransactionService.record(
+        inventoryTransactionService.recordMovement(
                 productId,
                 InventoryTransactionType.STOCK_OUT,
                 previous,
                 updated,
-                request.note() != null ? request.note() : "Stock out"
+                request.note() != null ? request.note() : "Stock out",
+                request.reason()
         );
 
         log.info("Stock-out productId={} amount={} newQuantity={}", productId, request.quantity(), updated);
@@ -133,6 +138,8 @@ public class StockService {
 
         int previousAvailable = stock.getAvailableQuantity();
         stock.reserve(amount);
+        if (productRepository.adjustQuantity(productId, 0) != 1) throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.CONFLICT, "Arşivlenmiş ürüne sipariş oluşturulamaz.");
 
         inventoryTransactionService.record(
                 productId,

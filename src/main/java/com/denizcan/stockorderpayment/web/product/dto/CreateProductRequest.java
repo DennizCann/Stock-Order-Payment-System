@@ -6,6 +6,9 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
+import java.util.List;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.PositiveOrZero;
 
 public record CreateProductRequest(
         @NotBlank(message = "Product name is required")
@@ -17,6 +20,11 @@ public record CreateProductRequest(
 
         @NotNull(message = "Price is required")
         @DecimalMin(value = "0.01", message = "Price must be greater than zero")
-        BigDecimal price
+        BigDecimal price,
+        @PositiveOrZero Integer quantity,
+        List<@NotNull @Valid ProductTagRequest> tags
 ) {
+    public CreateProductRequest(String name, String sku, BigDecimal price) {
+        this(name, sku, price, null, List.of());
+    }
 }

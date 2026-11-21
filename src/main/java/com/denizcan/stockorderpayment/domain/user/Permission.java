@@ -9,7 +9,12 @@ public enum Permission {
     ORDERS_VIEW("Kendi siparişlerini görüntüle", Role.USER),
     ORDERS_CREATE("Kendi hesabına sipariş oluştur", Role.USER),
     BRANCH_STOCK_VIEW("Kendi şubesinin stoğunu görüntüle", Role.BRANCH_EMPLOYEE),
-    BRANCH_SALE_CREATE("Kendi şubesinde satış kaydet", Role.BRANCH_EMPLOYEE);
+    BRANCH_SALE_CREATE("Kendi şubesinde satış kaydet", Role.BRANCH_EMPLOYEE),
+    PRODUCTS_CREATE("Ürün ekle", Role.USER),
+    PRODUCTS_EDIT("Ürün ve etiketlerini düzenle", Role.USER),
+    PRODUCTS_DELETE("Ürün kaldır", Role.USER),
+    STOCK_MANAGE("Merkez ve şubelerde stok hareketi oluştur", Role.USER),
+    BRANCH_STOCK_MANAGE("Kendi şubesinde stok giriş/çıkışı oluştur", Role.BRANCH_EMPLOYEE);
 
     private final String label;
     private final Role scope;
@@ -28,6 +33,12 @@ public enum Permission {
     }
 
     public static Set<Permission> defaultsFor(Role role) {
+        if (role == Role.ADMIN) return availableFor(role);
+        return role == Role.USER ? EnumSet.of(PRODUCTS_VIEW, STOCK_VIEW, ORDERS_VIEW, ORDERS_CREATE)
+                : EnumSet.of(BRANCH_STOCK_VIEW, BRANCH_SALE_CREATE);
+    }
+
+    public static Set<Permission> availableFor(Role role) {
         EnumSet<Permission> result = EnumSet.noneOf(Permission.class);
         for (Permission permission : values()) {
             if (role == Role.ADMIN || permission.scope == role) {
@@ -48,6 +59,16 @@ public enum Permission {
         effective.removeAll(user.getExcludedPermissions());
         if (!effective.contains(BRANCH_STOCK_VIEW)) effective.remove(BRANCH_SALE_CREATE);
         if (!effective.contains(ORDERS_VIEW)) effective.remove(ORDERS_CREATE);
+        if (!effective.contains(PRODUCTS_VIEW)) effective.removeAll(EnumSet.of(PRODUCTS_CREATE, PRODUCTS_EDIT, PRODUCTS_DELETE));
+        if (!effective.contains(STOCK_VIEW)) effective.remove(STOCK_MANAGE);
+        if (!effective.contains(BRANCH_STOCK_VIEW)) effective.remove(BRANCH_STOCK_MANAGE);
         return effective;
+    }
+
+    public static boolean validDependencies(Set<Permission> selected) {
+        return (!selected.contains(BRANCH_SALE_CREATE) && !selected.contains(BRANCH_STOCK_MANAGE) || selected.contains(BRANCH_STOCK_VIEW))
+                && (!selected.contains(ORDERS_CREATE) || selected.contains(ORDERS_VIEW))
+                && (!selected.contains(STOCK_MANAGE) || selected.contains(STOCK_VIEW))
+                && (java.util.Collections.disjoint(selected, EnumSet.of(PRODUCTS_CREATE, PRODUCTS_EDIT, PRODUCTS_DELETE)) || selected.contains(PRODUCTS_VIEW));
     }
 }

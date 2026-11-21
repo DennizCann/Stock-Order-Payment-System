@@ -9,12 +9,17 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import com.denizcan.stockorderpayment.repository.product.ProductRepository;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 @Service
 @RequiredArgsConstructor
 public class InventoryTransactionService {
 
     private final InventoryTransactionRepository inventoryTransactionRepository;
+    private final ProductRepository products;
 
     @Transactional
     public void record(
@@ -24,6 +29,12 @@ public class InventoryTransactionService {
             int newQuantity,
             String note
     ) {
+        recordMovement(productId, type, previousQuantity, newQuantity, note, null);
+    }
+
+    @Transactional
+    public void recordMovement(Long productId, InventoryTransactionType type, int previousQuantity,
+                               int newQuantity, String note, String reason) {
         int change = newQuantity - previousQuantity;
         InventoryTransaction tx = new InventoryTransaction(
                 productId,
@@ -33,6 +44,14 @@ public class InventoryTransactionService {
                 newQuantity,
                 note
         );
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        tx.setActor(authentication == null ? "Sistem" : authentication.getName());
+        tx.setReason(reason);
+        if (type != InventoryTransactionType.RESERVATION && type != InventoryTransactionType.RELEASE) {
+            if (products.adjustQuantity(productId, change) != 1) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Ürün arşivlenmiş veya stok toplamı geçersiz.");
+            }
+        }
         inventoryTransactionRepository.save(tx);
     }
 

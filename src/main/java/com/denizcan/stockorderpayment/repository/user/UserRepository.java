@@ -1,6 +1,9 @@
 package com.denizcan.stockorderpayment.repository.user;
 
 import com.denizcan.stockorderpayment.domain.user.User;
+import com.denizcan.stockorderpayment.domain.user.Role;
+import org.springframework.data.jpa.repository.EntityGraph;
+import java.util.List;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -14,6 +17,13 @@ import java.util.Optional;
 public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByUsername(String username);
+
+    @EntityGraph(attributePaths = {"branch", "employeeRole"})
+    List<User> findByRoleNotOrderByUsernameAsc(Role role);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select u from User u where u.id = :id")
+    Optional<User> findByIdForUpdate(@Param("id") Long id);
 
     boolean existsByUsername(String username);
 

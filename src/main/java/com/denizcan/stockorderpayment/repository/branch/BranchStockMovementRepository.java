@@ -14,4 +14,7 @@ public interface BranchStockMovementRepository extends JpaRepository<BranchStock
 
     @EntityGraph(attributePaths = {"stock.branch", "stock.product", "actor"})
     List<BranchStockMovement> findTop100ByOrderByCreatedAtDescIdDesc();
+
+    @EntityGraph(attributePaths = {"stock.branch", "stock.product", "actor"})
+    List<BranchStockMovement> findTop100ByStockBranchIdOrderByCreatedAtDescIdDesc(Long branchId);
 }

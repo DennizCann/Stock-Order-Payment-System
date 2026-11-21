@@ -95,6 +95,31 @@
     th, td { padding: 11px 15px; border-top: 1px solid #edf0f6; }
     th { background: #f7f9fd; color: var(--muted); font-size: .75rem; font-weight: 750; }
     td { font-size: .86rem; }
+    .employee-table { table-layout: fixed; white-space: normal; }
+    .employee-table th, .employee-table td { overflow-wrap: anywhere; vertical-align: top; }
+    .employee-table th:nth-child(1) { width: 13%; }
+    .employee-table th:nth-child(2) { width: 16%; }
+    .employee-table th:nth-child(3) { width: 10%; }
+    .employee-table th:nth-child(4) { width: 12%; }
+    .employee-table th:last-child { width: 154px; }
+    .employee-table td:last-child button { width: 100%; padding: 9px 10px; white-space: normal; }
+    .employee-permissions { min-width: 0; }
+    .employee-permissions summary { display: flex; align-items: center; gap: 8px; min-height: 42px; cursor: pointer; list-style: none; }
+    .employee-permissions summary::-webkit-details-marker { display: none; }
+    .employee-permission-preview { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; flex: 1; min-width: 0; }
+    .employee-permission-more { flex: 0 0 auto; color: var(--accent); font-weight: 750; font-size: 1.25rem; }
+    .employee-permissions ul { margin: 8px 0 0; padding-left: 16px; }
+    .employee-permissions li + li { margin-top: 4px; }
+    @media (max-width: 1000px) {
+      .employee-table, .employee-table tbody { display: block; }
+      .employee-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+      .employee-table tbody { display: grid; gap: 12px; padding: 12px; }
+      .employee-table tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border: 1px solid var(--border); border-radius: 10px; padding: 8px; }
+      .employee-table td { min-width: 0; border: 0; padding: 8px; }
+      .employee-table td::before { content: attr(data-label); display: block; margin-bottom: 4px; color: var(--muted); font-size: .75rem; font-weight: 750; }
+      .employee-table td:nth-child(5), .employee-table td:last-child, .employee-table td.empty { grid-column: 1 / -1; }
+      .employee-table td:last-child::before, .employee-table td.empty::before { display: none; }
+    }
     .numeric { text-align: right; font-variant-numeric: tabular-nums; }
     .empty { color: var(--muted); text-align: center; padding: 24px 12px; }
     .badge { display: inline-flex; align-items: center; padding: 3px 8px; border-radius: 999px; background: #eef2f8; color: #415470; font-size: .74rem; font-weight: 700; }
@@ -145,6 +170,39 @@
     .permission-options { border: 1px solid #dbe3f0; border-radius: 10px; padding: 16px; }
     .permission-options label { display: flex; align-items: center; gap: 10px; padding: 7px 0; }
     .permission-options input[type="checkbox"] { width: 18px; height: 18px; min-height: 0; padding: 0; margin: 0; }
+    .catalog-tools { display: grid; gap: 14px; padding: 0 19px 19px; }
+    .tag-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 8px; align-items: end; }
+    .tag-list { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+    .tag-chip { display: inline-block; background: #edf3fe; color: #294d85; border-radius: 6px; padding: 4px 8px; font-size: .8rem; overflow-wrap: anywhere; }
+    .catalog-table { table-layout: fixed; }
+    .catalog-table th, .catalog-table td { white-space: normal; overflow-wrap: anywhere; }
+    .catalog-table th:nth-child(1) { width: 9%; }
+    .catalog-table th:nth-child(2) { width: 19%; }
+    .catalog-table th:nth-child(4), .catalog-table th:nth-child(5) { width: 11%; }
+    .catalog-table th:last-child { width: 145px; }
+    .catalog-table .actions { flex-direction: column; }
+    select { max-width: 100%; min-width: 0; min-height: 42px; padding: 8px 10px; font: inherit; border: 1px solid #cbd6e5; border-radius: 8px; color: #18243b; background: white; }
+    .danger { color: #9a3038; }
+    #productEditor { max-width: 760px; margin-bottom: 22px; }
+    .movement-filters { display: flex; flex-wrap: wrap; gap: 12px; padding: 0 19px 19px; }
+    .section-menu { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: 18px; }
+    .section-menu a { display: grid; align-content: start; gap: 10px; padding: 24px; color: inherit; }
+    .section-menu a:hover { border-color: var(--accent); background: #f7faff; }
+    .section-menu strong { font-size: 1.15rem; }
+    .section-menu p { color: var(--muted); }
+    .section-menu .icon { color: var(--accent); width: 26px; height: 26px; }
+    .section-menu .menu-open { color: var(--accent); font-weight: 650; margin-top: 8px; }
+    .section-back { display: inline-block; margin-bottom: 16px; font-weight: 650; }
+    @media (max-width: 1000px) {
+      .catalog-table, .catalog-table tbody { display: block; width: 100%; }
+      .catalog-table thead { display: none; }
+      .catalog-table tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 12px; gap: 10px; border-top: 1px solid var(--border); }
+      .catalog-table td { display: block; padding: 0; border: 0; text-align: left; }
+      .catalog-table td::before { content: attr(data-label); display: block; font-size: .72rem; color: var(--muted); }
+      .catalog-table td:nth-child(6), .catalog-table td:last-child, .catalog-table td.empty { grid-column: 1 / -1; }
+      .catalog-table .actions { flex-direction: row; }
+    }
+    @media (max-width: 560px) { .tag-row { grid-template-columns: minmax(0, 1fr); } }
   </style>
 </head>
 <body>
@@ -196,16 +254,11 @@
         <span class="brand-icon"><svg class="icon" aria-hidden="true"><use href="#icon-box"/></svg></span>
         <span>Satış Operasyon<small>Yönetim paneli</small></span>
       </div>
-      <p class="nav-label">Operasyon</p>
       <nav aria-label="Panel bölümleri">
         <a href="#overview" data-central-only><svg class="icon" aria-hidden="true"><use href="#icon-home"/></svg>Genel Bakış</a>
-        <a href="#orders" data-central-only><svg class="icon" aria-hidden="true"><use href="#icon-order"/></svg>Siparişler</a>
-        <a href="#products" data-central-only><svg class="icon" aria-hidden="true"><use href="#icon-box"/></svg>Ürünler</a>
-        <a href="#inventory" data-central-only><svg class="icon" aria-hidden="true"><use href="#icon-stock"/></svg>Stok</a>
-        <a href="#channels" data-admin-only hidden><svg class="icon" aria-hidden="true"><use href="#icon-channels"/></svg>Satış Kanalları</a>
-        <p class="nav-label" data-admin-only hidden>Yönetim</p>
+        <a href="#channels"><svg class="icon" aria-hidden="true"><use href="#icon-channels"/></svg>Satış Kanalları</a>
+        <a href="#products"><svg class="icon" aria-hidden="true"><use href="#icon-box"/></svg>Ürünler</a>
         <a href="#branches" data-admin-only hidden><svg class="icon" aria-hidden="true"><use href="#icon-stock"/></svg>Şubeler</a>
-        <a href="#branch-workspace" data-branch-only hidden><svg class="icon" aria-hidden="true"><use href="#icon-home"/></svg>Şubem</a>
         <a href="#accounts" data-admin-only hidden><svg class="icon" aria-hidden="true"><use href="#icon-box"/></svg>Kullanıcılar</a>
       </nav>
       <p class="rail-footer">Yerel demo ortamı</p>
@@ -250,14 +303,23 @@
           <div id="detail-movements" class="table-wrap" role="region" aria-label="Stok hareketleri tablosu" tabindex="0" hidden>
             <table>
               <thead><tr><th scope="col">Tarih</th><th scope="col">Ürün</th><th scope="col">SKU</th><th scope="col">Hareket</th><th scope="col" class="numeric">Değişim</th></tr></thead>
-              <tbody id="movementRows"></tbody>
+              <tbody id="overviewMovementRows"></tbody>
             </table>
           </div>
           <footer class="table-footer" id="detail-footer"><a href="#orders" id="detail-link">Tüm siparişlere git →</a></footer>
         </section>
         </section>
 
-        <section id="orders" data-view hidden aria-labelledby="all-orders-title">
+        <section id="channels" data-view hidden aria-labelledby="sales-home-title">
+          <div class="hero"><div><h1 id="sales-home-title">Satış Kanalları</h1><p class="muted">Siparişleri takip et ve satış kanallarını yönet.</p></div></div>
+          <div class="section-menu">
+            <a href="#channel-connections" data-destination="channel-connections" class="card"><svg class="icon" aria-hidden="true"><use href="#icon-channels"/></svg><strong>Satış kanalları</strong><p>Kanal bağlantılarını aç, siparişleri al ve stokları eşitle.</p><span class="menu-open">Kanalları aç →</span></a>
+            <a href="#orders" data-destination="orders" class="card"><svg class="icon" aria-hidden="true"><use href="#icon-order"/></svg><strong>Siparişler</strong><p>Satış kanallarından gelen siparişleri ve durumlarını görüntüle.</p><span class="menu-open">Siparişleri aç →</span></a>
+          </div>
+        </section>
+
+        <section id="orders" data-view data-parent="channels" hidden aria-labelledby="all-orders-title">
+          <a class="section-back" href="#channels">← Satış Kanalları</a>
           <div class="hero">
             <div><p class="eyebrow">Operasyon paneli</p><h1 id="all-orders-title">Siparişler</h1><p class="muted" id="all-orders-description">Tüm satış kanallarından merkeze kaydedilen siparişler.</p></div>
             <div class="actions"><button class="secondary" data-refresh type="button">Yenile</button><button class="primary" data-channel-action="import" type="button" data-admin-only hidden>Siparişleri al</button></div>
@@ -272,8 +334,9 @@
           </section>
         </section>
 
-        <section id="channels" data-view data-admin-view hidden aria-labelledby="channels-title">
-          <div class="hero"><div><p class="eyebrow">Operasyon paneli</p><h1 id="channels-title">Satış Kanalları</h1><p class="muted">Kanal simülatörlerini aç ve stok bilgilerini gönder.</p></div><div class="actions"><button class="secondary" data-refresh type="button">Yenile</button><button class="primary" data-channel-action="import" type="button">Siparişleri al</button></div></div>
+        <section id="channel-connections" data-view data-parent="channels" data-admin-view hidden aria-labelledby="channels-title">
+          <a class="section-back" href="#channels">← Satış Kanalları</a>
+          <div class="hero"><div><h1 id="channels-title">Kanal bağlantıları</h1><p class="muted">Kanal simülatörlerini aç ve stok bilgilerini gönder.</p></div><div class="actions"><button class="secondary" data-refresh type="button">Yenile</button><button class="primary" data-channel-action="import" type="button">Siparişleri al</button></div></div>
           <section class="card" aria-label="Kanal simülatörleri">
             <header class="card-head"><div><h2>Kanal simülatörleri</h2><p class="muted">Beş yerel simülatör · yeni sekmede açılır</p></div></header>
             <ul class="channel-list">
@@ -287,27 +350,21 @@
           </section>
         </section>
 
-        <section id="inventory" data-view hidden aria-labelledby="stock-page-title">
+        <section id="inventory" data-view data-parent="products" hidden aria-labelledby="stock-page-title">
+          <a class="section-back" href="#products">← Ürünler</a>
           <div class="hero"><div><p class="eyebrow">Operasyon paneli</p><h1 id="stock-page-title">Stok</h1><p class="muted">Ürün ekle, stok miktarlarını görüntüle ve düzenle.</p></div><button class="secondary" data-refresh type="button">Yenile</button></div>
           <section class="card" aria-labelledby="inventory-title">
-          <header class="card-head"><div><h2 id="inventory-title">Merkez stoğu</h2><p class="muted">Ürün bazında fiziksel, ayrılmış ve satılabilir stok</p></div></header>
+          <header class="card-head"><div><h2 id="inventory-title">Genel stok</h2><p class="muted">Toplam adet merkez ve şubelerin toplamıdır. Ayrılmış ve satılabilir adetler merkez içindir.</p></div><a href="#movements">Giriş / çıkış oluştur</a></header>
           <div class="table-wrap" role="region" aria-label="Stok tablosu" tabindex="0">
             <table>
-              <thead><tr><th scope="col">ID</th><th scope="col">SKU</th><th scope="col">Ürün</th><th scope="col" class="numeric">Fiziksel</th><th scope="col" class="numeric">Ayrılmış</th><th scope="col" class="numeric">Satılabilir</th><th scope="col" data-admin-only hidden>İşlem</th></tr></thead>
+              <thead><tr><th scope="col">ID</th><th scope="col">SKU</th><th scope="col">Ürün</th><th scope="col" class="numeric">Toplam adet</th><th scope="col" class="numeric">Merkez</th><th scope="col" class="numeric">Ayrılmış</th><th scope="col" class="numeric">Satılabilir</th><th scope="col" data-admin-only hidden>İşlem</th></tr></thead>
               <tbody id="stockRows"></tbody>
             </table>
           </div>
           </section>
           <div class="section" data-admin-only hidden>
-            <section class="card" aria-labelledby="product-title">
-              <header class="card-head"><h2 id="product-title">Ürün ekle</h2></header>
-              <form id="productForm" class="form-stack">
-                <label>Ürün adı<input id="productName" required></label>
-                <label>SKU<input id="productSku" maxlength="64" required></label>
-                <label>Fiyat<input id="productPrice" type="number" min="0.01" step="0.01" required></label>
-                <label>Başlangıç stoğu<input id="initialStockQuantity" type="number" min="0" value="0" required></label>
-                <button type="submit" class="primary">Ürün ve stoğu kaydet</button>
-              </form>
+            <section class="card" aria-labelledby="stock-adjust-title">
+              <header class="card-head"><h2 id="stock-adjust-title">Merkez stok düzeltmesi</h2><a href="#product-list">Ürün ekle ve etiketleri yönet</a></header>
               <form id="stockForm" class="form-stack" hidden>
                 <h3 id="stock-title">Stok düzenle</h3>
                 <p id="selectedStockProduct"></p>
@@ -342,16 +399,73 @@
           </section>
         </section>
 
-        <section id="products" data-view hidden aria-labelledby="products-title">
-          <div class="hero"><div><p class="eyebrow">Operasyon paneli</p><h1 id="products-title">Ürünler</h1><p class="muted">Ürün kataloğunu görüntüle.</p></div><button class="secondary" data-refresh type="button">Yenile</button></div>
+        <section id="products" data-view hidden aria-labelledby="products-home-title">
+          <div class="hero"><div><h1 id="products-home-title">Ürünler</h1><p class="muted">Ürünlerini, stoklarını ve stok hareketlerini tek bölümden yönet.</p></div></div>
+          <div class="section-menu">
+            <a href="#product-list" data-destination="product-list" class="card"><svg class="icon" aria-hidden="true"><use href="#icon-box"/></svg><strong>Ürün listesi</strong><p>Ürün ekle, bilgilerini ve etiketlerini düzenle, filtrele.</p><span class="menu-open">Ürün listesini aç →</span></a>
+            <a href="#inventory" data-destination="inventory" class="card"><svg class="icon" aria-hidden="true"><use href="#icon-stock"/></svg><strong>Stok</strong><p>Toplam adedi, merkez ve şube stoklarını görüntüle.</p><span class="menu-open">Stokları aç →</span></a>
+            <a href="#branch-workspace" data-destination="branch-workspace" class="card"><svg class="icon" aria-hidden="true"><use href="#icon-stock"/></svg><strong>Şube stoğum</strong><p>Kendi şubenin stoğunu görüntüle ve yetkin varsa satış kaydet.</p><span class="menu-open">Şube stoğunu aç →</span></a>
+            <a href="#movements" data-destination="movements" class="card"><svg class="icon" aria-hidden="true"><use href="#icon-clock"/></svg><strong>Stok hareketleri</strong><p>Giriş ve çıkışları takip et, yetkin varsa hareket oluştur.</p><span class="menu-open">Hareketleri aç →</span></a>
+          </div>
+        </section>
+
+        <section id="product-list" data-view data-parent="products" hidden aria-labelledby="products-title">
+          <a class="section-back" href="#products">← Ürünler</a>
+          <div class="hero"><div><h1 id="products-title">Ürün listesi</h1><p class="muted">Ürünlerini ve etiketlerini yönet, birlikte filtrele.</p></div><div class="actions"><button id="newProduct" class="primary" data-permission="PRODUCTS_CREATE" type="button" hidden>Ürün ekle</button><button class="secondary" data-refresh type="button">Yenile</button></div></div>
+          <section id="productEditor" class="card" hidden aria-labelledby="product-title">
+            <header class="card-head"><h2 id="product-title">Ürün ekle</h2><button id="cancelProductEdit" class="secondary" type="button">Vazgeç</button></header>
+            <form id="productForm" class="form-stack">
+              <label>Ürün adı<input id="productName" maxlength="255" required></label>
+              <label>SKU<input id="productSku" maxlength="64" required></label>
+              <label>Fiyat<input id="productPrice" type="number" min="0.01" step="0.01" required></label>
+              <label id="initialStockField">Başlangıç adedi · Merkez<input id="initialStockQuantity" type="number" min="0" max="2147483647" value="0" required></label>
+              <fieldset class="permission-options"><legend>Etiketler</legend>
+                <p class="muted">İsim ve değer gir veya daha önce kullanılan bir etiketi seç.</p>
+                <label>Önceki etiketler<select id="existingProductTag"><option value="">Etiket seç</option></select></label>
+                <div id="productTagRows" class="form-stack"></div>
+                <button id="addProductTag" type="button" class="secondary">Etiket ekle</button>
+              </fieldset>
+              <button id="saveProduct" type="submit" class="primary">Ürünü kaydet</button>
+            </form>
+            <datalist id="tagNameSuggestions"></datalist>
+          </section>
           <section class="card" aria-labelledby="catalog-title">
             <header class="card-head"><h2 id="catalog-title">Ürün kataloğu</h2></header>
+            <div class="catalog-tools">
+              <label>Ürün ara<input id="productSearch" type="search" placeholder="İsim veya SKU"></label>
+              <div class="tag-row"><label>Etiket<select id="filterTagName"><option value="">Etiket seç</option></select></label><label>Değer<select id="filterTagValue"><option value="">Değer seç</option></select></label><button id="addTagFilter" class="secondary" type="button">Filtre ekle</button></div>
+              <div id="activeTagFilters" class="tag-list"></div><p id="catalogCount" class="muted"></p>
+            </div>
             <div class="table-wrap" role="region" aria-label="Ürün tablosu" tabindex="0">
-              <table>
-                <thead><tr><th scope="col">ID</th><th scope="col">SKU</th><th scope="col">Ürün</th><th scope="col" class="numeric">Fiyat</th></tr></thead>
+              <table class="catalog-table">
+                <thead><tr><th scope="col">ID</th><th scope="col">SKU</th><th scope="col">Ürün</th><th scope="col" class="numeric">Fiyat</th><th scope="col" class="numeric">Toplam adet</th><th scope="col">Etiketler</th><th scope="col">İşlem</th></tr></thead>
                 <tbody id="productRows"></tbody>
               </table>
             </div>
+          </section>
+        </section>
+
+        <section id="movements" data-view data-parent="products" hidden aria-labelledby="movements-title">
+          <a class="section-back" href="#products">← Ürünler</a>
+          <div class="hero"><div><h1 id="movements-title">Stok hareketleri</h1><p class="muted">Merkez ve şube giriş/çıkışlarını takip et.</p></div><button id="refreshMovements" class="secondary" type="button">Yenile</button></div>
+          <section id="movementEditor" class="card account-form" aria-labelledby="movement-form-title" hidden>
+            <header class="card-head"><h2 id="movement-form-title">Stok hareketi oluştur</h2></header>
+            <form id="movementForm" class="form-stack">
+              <label>Stok yeri<select id="movementLocation" required></select></label>
+              <label>Ürün<select id="movementProduct" required></select></label>
+              <label>Hareket yönü<select id="movementDirection" required><option value="IN">Giriş</option><option value="OUT">Çıkış</option></select></label>
+              <label>Adet<input id="movementQuantity" type="number" min="1" max="2147483647" required></label>
+              <label>İşlem nedeni · isteğe bağlı<input id="movementReason" list="movementReasons" maxlength="100" placeholder="Satış, mal kabulü, iade…"></label>
+              <datalist id="movementReasons"><option value="Satış"></option><option value="Mal kabulü"></option><option value="İade"></option><option value="Sayım düzeltmesi"></option></datalist>
+              <label>Açıklama · isteğe bağlı<input id="movementNote" maxlength="255"></label>
+              <p class="muted">Tarih ve işlemi yapan kişi otomatik kaydedilir.</p>
+              <button class="primary" type="submit">Hareketi kaydet</button>
+            </form>
+          </section>
+          <section class="card section" aria-labelledby="movement-history-title">
+            <header class="card-head"><h2 id="movement-history-title">Son 100 stok hareketi</h2></header>
+            <div class="movement-filters"><label>Stok yeri<select id="historyLocation"><option value="">Tümü</option></select></label><label>Yön<select id="historyDirection"><option value="">Tümü</option><option value="IN">Giriş</option><option value="OUT">Çıkış</option></select></label></div>
+            <div class="table-wrap"><table><thead><tr><th>Zaman</th><th>Stok yeri</th><th>Ürün</th><th>Yön</th><th class="numeric">Adet</th><th class="numeric">Kalan</th><th>Neden / Açıklama</th><th>Çalışan</th></tr></thead><tbody id="movementRows"></tbody></table></div>
           </section>
         </section>
         <section id="branches" data-view data-admin-view hidden aria-labelledby="branches-title">
@@ -370,7 +484,8 @@
             </div>
           </section>
         </section>
-        <section id="branch-workspace" data-view data-branch-view hidden aria-labelledby="branch-workspace-title">
+        <section id="branch-workspace" data-view data-parent="products" data-branch-view hidden aria-labelledby="branch-workspace-title">
+          <a class="section-back" href="#products">← Ürünler</a>
           <div class="hero">
             <div><h1 id="branch-workspace-title">Şubem</h1><p id="assignedBranch" class="muted"></p></div>
             <button id="refreshEmployeeStock" class="secondary" type="button">Yenile</button>
@@ -442,6 +557,30 @@
               </label>
             </form>
           </section>
+          <section class="card section" aria-labelledby="employee-list-title">
+            <header class="card-head">
+              <h2 id="employee-list-title">Kayıtlı çalışanlar</h2>
+              <button id="refreshEmployees" type="button" class="secondary">Listeyi yenile</button>
+            </header>
+            <div class="table-wrap" role="region" aria-label="Kayıtlı çalışanlar" tabindex="0">
+              <table class="employee-table">
+                <thead><tr><th scope="col">Kullanıcı adı</th><th scope="col">Rol</th><th scope="col">Şube</th><th scope="col">Durum</th><th scope="col">Yetkiler</th><th scope="col">İşlem</th></tr></thead>
+                <tbody id="employeeRows"></tbody>
+              </table>
+            </div>
+          </section>
+          <section id="employeePermissionEditor" class="card account-form section" aria-labelledby="employee-permissions-title" hidden>
+            <header class="card-head"><div><h2 id="employee-permissions-title">Çalışanın yetkileri</h2><p id="editingEmployeeName" class="muted"></p></div></header>
+            <form id="employeePermissionForm" class="form-stack">
+              <fieldset class="permission-options"><legend>İzin verilen işlemler</legend><div id="employeePermissionChoices"></div></fieldset>
+              <p class="muted">Bu düzenleme seçilen çalışana uygulanır. Çalışan yeniden giriş yaptığında menüler de güncellenir.</p>
+              <p id="employeePermissionError" class="error" role="alert"></p>
+              <div class="actions">
+                <button type="submit" class="primary">Yetkileri kaydet</button>
+                <button id="cancelEmployeeEdit" type="button" class="secondary">Vazgeç</button>
+              </div>
+            </form>
+          </section>
         </section>
       </main>
     </div>
@@ -449,6 +588,62 @@
 
   <script>
     const $ = id => document.getElementById(id);
+    // Keep existing forms and their event targets while grouping them into focused views.
+    function createSubview(id, parent, title, contents) {
+      const section = document.createElement('section');
+      section.id = id; section.dataset.view = ''; section.dataset.parent = parent; section.hidden = true;
+      if (parent === 'branches' || parent === 'accounts') section.dataset.adminView = '';
+      const back = document.createElement('a'); back.className = 'section-back'; back.href = '#' + parent;
+      back.textContent = '← ' + $(parent).querySelector('h1').textContent;
+      const hero = document.createElement('div'); hero.className = 'hero';
+      const heading = document.createElement('h1'); heading.id = id + '-heading'; heading.textContent = title;
+      section.setAttribute('aria-labelledby', heading.id); hero.append(heading);
+      section.append(back, hero, ...contents); $('workspace').querySelector('main').append(section);
+      return section;
+    }
+
+    function setSectionMenu(id, entries) {
+      const section = $(id); const hero = section.querySelector('.hero');
+      const menu = document.createElement('div'); menu.className = 'section-menu';
+      for (const entry of entries) {
+        const link = document.createElement('a'); link.href = '#' + entry.target;
+        link.className = 'card'; link.dataset.destination = entry.target;
+        if (entry.permission) link.dataset.requiredPermission = entry.permission;
+        if (entry.createProduct) link.dataset.productCreate = '';
+        const title = document.createElement('strong'); title.textContent = entry.title;
+        const description = document.createElement('p'); description.textContent = entry.description;
+        const open = document.createElement('span'); open.className = 'menu-open'; open.textContent = 'Aç →';
+        link.append(title, description, open); menu.append(link);
+      }
+      section.replaceChildren(hero, menu);
+    }
+
+    createSubview('product-editor', 'products', 'Ürün ekle', [$('productEditor')]);
+    $('productEditor').hidden = false;
+    createSubview('movement-create', 'products', 'Stok hareketi oluştur', [$('movementEditor')]);
+    createSubview('branch-create', 'branches', 'Şube ekle', [$('branchForm').closest('section')]);
+    createSubview('branch-list', 'branches', 'Kayıtlı şubeler', [$('branchRows').closest('section')]);
+    createSubview('employee-roles', 'accounts', 'Roller ve yetkiler', [$('employeeRoleForm').closest('section')]);
+    createSubview('employee-create', 'accounts', 'Çalışan ekle', [$('inviteForm').closest('section')]);
+    createSubview('employee-list', 'accounts', 'Çalışanlar ve yetkileri', [$('employeeRows').closest('section'), $('employeePermissionEditor')]);
+    setSectionMenu('products', [
+      { target: 'product-editor', title: 'Ürün ekle', description: 'Yeni ürünü, başlangıç adedini ve etiketlerini birlikte oluştur.', permission: 'PRODUCTS_CREATE', createProduct: true },
+      { target: 'product-list', title: 'Ürün listesi', description: 'Ürünleri ara, etiketlerle filtrele ve bilgilerini düzenle.' },
+      { target: 'inventory', title: 'Stokları görüntüle', description: 'Toplam adedi, merkez ve şube stoklarını incele.' },
+      { target: 'branch-workspace', title: 'Şube stoğum', description: 'Kendi şubenin stoğunu görüntüle ve yetkin varsa satış kaydet.' },
+      { target: 'movement-create', title: 'Stok hareketi oluştur', description: 'Merkez veya şuben için stok girişi ya da çıkışı kaydet.' },
+      { target: 'movements', title: 'Stok hareketleri', description: 'Geçmiş giriş ve çıkışları, zamanı ve işlemi yapan kişiyi incele.' }
+    ]);
+    setSectionMenu('branches', [
+      { target: 'branch-create', title: 'Şube ekle', description: 'Yeni şubeni sisteme tanımla.' },
+      { target: 'branch-list', title: 'Şubeleri görüntüle', description: 'Kayıtlı şubelerini listele.' }
+    ]);
+    setSectionMenu('accounts', [
+      { target: 'employee-create', title: 'Çalışan ekle', description: 'Çalışanın rolünü, şubesini ve kişisel yetkilerini belirle.' },
+      { target: 'employee-list', title: 'Çalışanlar ve yetkileri', description: 'Çalışanları görüntüle ve kişiye özel izinleri düzenle.' },
+      { target: 'employee-roles', title: 'Roller ve yetkiler', description: 'Ortak rol tanımlarını oluştur ve düzenle.' }
+    ]);
+    $('accounts').querySelector('.muted').textContent = 'Çalışanlar, roller ve yetkiler için yapmak istediğin işlemi seç.';
     const channels = { INTERNAL: 'Merkez', TRENDYOL: 'Trendyol', HEPSIBURADA: 'Hepsiburada', N11: 'n11', WEBSTORE: 'Web mağazası', BRANCH: 'Şube' };
     const statuses = { CREATED: 'Oluşturuldu', PAID: 'Ödendi', CANCELLED: 'İptal edildi', PAYMENT_FAILED: 'Ödeme başarısız' };
     const movementTypes = {
@@ -479,10 +674,18 @@
     let employeeRoles = [];
     let permissionOptions = [];
     let editingRoleId = null;
+    let editingEmployee = null;
+    let employeeListRequest = 0;
     let activationToken = '';
     let selectedDetail = 'recent';
     let overviewData = { recentOrders: [], todayOrders: [], stockRows: [] };
     let detailRequest = 0;
+    let catalogProducts = [];
+    let tagSuggestions = [];
+    let catalogFilters = [];
+    let editingProductId = null;
+    let movementHistory = [];
+    let movementRequest = 0;
 
     function can(permission) {
       return isAdmin || permissions.has(permission);
@@ -490,12 +693,17 @@
 
     function canView(view) {
       if (view.hasAttribute('data-admin-view')) return isAdmin;
+      if (view.id === 'channels') return isAdmin || !isBranchEmployee && can('ORDERS_VIEW');
+      if (view.id === 'products') return can('PRODUCTS_VIEW') || can('STOCK_VIEW') || can('BRANCH_STOCK_VIEW');
+      if (view.id === 'product-editor') return can('PRODUCTS_CREATE') || can('PRODUCTS_EDIT');
+      if (view.id === 'movement-create') return can('STOCK_MANAGE') || can('BRANCH_STOCK_MANAGE');
+      if (view.id === 'movements') return can('STOCK_VIEW') || can('BRANCH_STOCK_VIEW');
       if (view.hasAttribute('data-branch-view')) return isBranchEmployee && can('BRANCH_STOCK_VIEW');
       if (isBranchEmployee) return false;
       switch (view.id) {
         case 'overview': return can('STOCK_VIEW') && can('ORDERS_VIEW');
         case 'orders': return can('ORDERS_VIEW');
-        case 'products': return can('PRODUCTS_VIEW');
+        case 'product-list': return can('PRODUCTS_VIEW');
         case 'inventory': return can('STOCK_VIEW');
         case 'channels': return isAdmin;
         default: return false;
@@ -520,6 +728,79 @@
         input.checked = selected.includes(permission.code);
         label.append(input, document.createTextNode(permission.label));
         body.append(label);
+      }
+    }
+
+    function closeEmployeeEditor() {
+      editingEmployee = null;
+      $('employeePermissionEditor').hidden = true;
+      $('employeePermissionForm').reset();
+      $('employeePermissionChoices').replaceChildren();
+      $('employeePermissionError').textContent = '';
+    }
+
+    function editEmployee(employee) {
+      editingEmployee = employee;
+      $('editingEmployeeName').textContent = [employee.username, employee.roleName, employee.branchName].filter(Boolean).join(' · ');
+      renderPermissionChoices('employeePermissionChoices', employee.scope, employee.permissions, employee.basePermissions);
+      $('employeePermissionError').textContent = '';
+      $('employeePermissionEditor').hidden = false;
+      $('employeePermissionEditor').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      $('employeePermissionChoices').querySelector('input')?.focus();
+    }
+
+    async function refreshEmployees() {
+      const session = token;
+      const request = ++employeeListRequest;
+      const employees = await api('/auth/accounts');
+      if (token !== session || !isAdmin || request !== employeeListRequest) return;
+      const body = $('employeeRows');
+      body.replaceChildren();
+      if (!employees.length) emptyRow(body, 'Henüz çalışan hesabı yok.', 6);
+      for (const employee of employees) {
+        const row = document.createElement('tr');
+        cell(row, employee.username);
+        cell(row, employee.roleName);
+        cell(row, employee.branchName);
+        cell(row, employee.enabled ? 'Etkin' : 'Parola bekleniyor');
+        const details = document.createElement('details');
+        details.className = 'employee-permissions';
+        const summary = document.createElement('summary');
+        summary.setAttribute('aria-label', employee.username + ' için tüm yetkiler');
+        const shortLabels = {
+          PRODUCTS_VIEW: 'Ürün görüntüleme', STOCK_VIEW: 'Merkez stoğu',
+          ORDERS_VIEW: 'Sipariş görüntüleme', ORDERS_CREATE: 'Sipariş oluşturma',
+          BRANCH_STOCK_VIEW: 'Şube stoğu', BRANCH_SALE_CREATE: 'Satış kaydı'
+        };
+        const selected = permissionOptions.filter(option => employee.permissions.includes(option.code));
+        const preview = document.createElement('span');
+        preview.className = 'employee-permission-preview';
+        preview.textContent = selected.length
+          ? selected.slice(0, 3).map(option => shortLabels[option.code] || option.label).join(', ')
+          : 'Yetki yok';
+        const more = document.createElement('span');
+        more.textContent = '…';
+        more.className = 'employee-permission-more';
+        more.setAttribute('aria-hidden', 'true');
+        more.hidden = !selected.length;
+        summary.append(preview, more);
+        const permissionList = document.createElement('ul');
+        for (const permission of selected) {
+          const item = document.createElement('li');
+          item.textContent = permission.label;
+          permissionList.append(item);
+        }
+        details.append(summary, permissionList);
+        cell(row, details);
+        const edit = document.createElement('button');
+        edit.type = 'button';
+        edit.className = 'secondary';
+        edit.textContent = 'Yetkileri düzenle';
+        edit.addEventListener('click', () => editEmployee(employee));
+        cell(row, edit);
+        const labels = ['Kullanıcı adı', 'Rol', 'Şube', 'Durum', 'Yetkiler', 'İşlem'];
+        Array.from(row.cells).forEach((column, index) => { column.dataset.label = labels[index]; });
+        body.append(row);
       }
     }
 
@@ -571,19 +852,26 @@
       }
       if (editingRoleId === null) renderRolePermissions();
       updateInviteBranch();
+      await refreshEmployees();
     }
 
     function showView() {
       const allowedViews = views.filter(canView);
-      const view = allowedViews.find(item => '#' + item.id === location.hash) || allowedViews[0];
+      const view = allowedViews.find(item => '#' + item.id === location.hash)
+        || allowedViews.find(item => !item.dataset.parent) || allowedViews[0];
+      if (!view) return;
       for (const item of views) item.hidden = item !== view;
       for (const link of navigation) {
         const target = views.find(item => '#' + item.id === link.hash);
         link.hidden = !target || !canView(target);
-        const active = link.hash === '#' + view.id;
+        const active = link.hash === '#' + (view.dataset.parent || view.id);
         link.classList.toggle('active', active);
         if (active) link.setAttribute('aria-current', 'page');
         else link.removeAttribute('aria-current');
+      }
+      for (const link of document.querySelectorAll('[data-destination]')) {
+        const target = views.find(item => item.id === link.dataset.destination);
+        link.hidden = !target || !canView(target) || (Boolean(link.dataset.requiredPermission) && !can(link.dataset.requiredPermission));
       }
       document.title = view.querySelector('h1').textContent + ' | Satış Operasyon Merkezi';
       window.scrollTo(0, 0);
@@ -593,6 +881,7 @@
           if (token === session && !view.hidden) notify(error.message, true);
         });
       }
+      if (view.id === 'movements' || view.id === 'movement-create') refreshMovements().catch(error => notify(error.message, true));
     }
 
     function readActivationLink() {
@@ -707,7 +996,7 @@
     }
 
     async function renderMovements(request) {
-      const body = $('movementRows');
+      const body = $('overviewMovementRows');
       body.replaceChildren();
       emptyRow(body, 'Stok hareketleri yükleniyor…', 5);
       try {
@@ -767,24 +1056,181 @@
       }
     }
 
-    function renderProducts(products) {
+    function renderProducts(products = catalogProducts) {
       const body = $('productRows');
       body.replaceChildren();
-      if (!products.length) emptyRow(body, 'Henüz ürün yok.', 4);
-      for (const product of products) {
+      const search = $('productSearch').value.trim().toLocaleLowerCase('tr');
+      const filtered = products.filter(p => (!search || (p.name + ' ' + p.sku).toLocaleLowerCase('tr').includes(search))
+        && catalogFilters.every(f => (p.tags || []).some(t => t.name === f.name && t.value === f.value)));
+      $('catalogCount').textContent = filtered.length + ' / ' + products.length + ' ürün';
+      if (!filtered.length) emptyRow(body, products.length ? 'Filtrelere uygun ürün yok.' : 'Henüz ürün yok.', 7);
+      for (const product of filtered) {
         const row = document.createElement('tr');
         cell(row, product.id);
         cell(row, product.sku);
         cell(row, product.name);
         cell(row, product.price == null ? '—' : amounts.format(product.price), 'numeric');
+        cell(row, numbers.format(product.quantity || 0), 'numeric');
+        const tags = document.createElement('div');
+        tags.className = 'tag-list';
+        for (const tag of product.tags || []) {
+          const chip = document.createElement('span');
+          chip.className = 'tag-chip';
+          chip.textContent = tag.name + ': ' + tag.value;
+          tags.append(chip);
+        }
+        cell(row, tags.childNodes.length ? tags : 'Etiket yok');
+        const actions = document.createElement('div');
+        actions.className = 'actions';
+        if (can('PRODUCTS_EDIT')) {
+          const edit = document.createElement('button');
+          edit.type = 'button'; edit.className = 'secondary'; edit.textContent = 'Düzenle';
+          edit.addEventListener('click', () => openProductEditor(product));
+          actions.append(edit);
+        }
+        if (can('PRODUCTS_DELETE')) {
+          const remove = document.createElement('button');
+          remove.type = 'button'; remove.className = 'secondary danger'; remove.textContent = 'Ürünü kaldır';
+          remove.addEventListener('click', () => {
+            if (!confirm(product.name + ' katalogdan kaldırılsın mı? Geçmiş kayıtları korunur.')) return;
+            action(remove, async () => {
+              await api('/products/' + product.id, 'DELETE');
+              if (editingProductId === product.id) closeProductEditor();
+              await refresh(); notify('Ürün katalogdan kaldırıldı; geçmiş kayıtları korundu.');
+            });
+          });
+          actions.append(remove);
+        }
+        cell(row, actions.childNodes.length ? actions : 'Görüntüleme');
+        [...row.cells].forEach((td, i) => td.dataset.label = ['ID', 'SKU', 'Ürün', 'Fiyat', 'Toplam adet', 'Etiketler', 'İşlem'][i]);
+        body.append(row);
+      }
+    }
+
+    function addTagRow(tag = { name: '', value: '' }) {
+      const row = document.createElement('div'); row.className = 'tag-row';
+      const nameLabel = document.createElement('label'); nameLabel.textContent = 'Etiket ismi';
+      const name = document.createElement('input'); name.value = tag.name; name.required = true;
+      name.maxLength = 100; name.className = 'tag-name'; name.setAttribute('list', 'tagNameSuggestions');
+      nameLabel.append(name);
+      const valueLabel = document.createElement('label'); valueLabel.textContent = 'Değer';
+      const value = document.createElement('input'); value.value = tag.value; value.required = true;
+      value.maxLength = 255; value.className = 'tag-value'; valueLabel.append(value);
+      const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'secondary';
+      remove.textContent = 'Kaldır'; remove.setAttribute('aria-label', 'Etiketi üründen kaldır');
+      remove.addEventListener('click', () => row.remove());
+      row.append(nameLabel, valueLabel, remove); $('productTagRows').append(row);
+    }
+
+    function openProductEditor(product = null) {
+      editingProductId = product?.id ?? null;
+      $('productForm').reset(); $('productTagRows').replaceChildren();
+      $('product-title').textContent = product ? 'Ürün ve etiketlerini düzenle' : 'Ürün ekle';
+      $('product-editor-heading').textContent = $('product-title').textContent;
+      $('initialStockField').hidden = !!product;
+      $('initialStockQuantity').disabled = !!product;
+      if (product) {
+        $('productName').value = product.name; $('productSku').value = product.sku;
+        $('productPrice').value = product.price;
+        for (const tag of product.tags || []) addTagRow(tag);
+      }
+      $('productEditor').hidden = false;
+      location.hash = '#product-editor';
+      showView();
+      $('productEditor').scrollIntoView({ behavior: 'smooth', block: 'start' }); $('productName').focus();
+    }
+
+    function closeProductEditor() {
+      editingProductId = null;
+      $('productForm').reset(); $('productTagRows').replaceChildren();
+      $('product-title').textContent = 'Ürün ekle'; $('product-editor-heading').textContent = 'Ürün ekle';
+      $('initialStockField').hidden = false; $('initialStockQuantity').disabled = false;
+      if (location.hash === '#product-editor') location.hash = '#product-list';
+    }
+
+    function renderTagSuggestions() {
+      tagSuggestions = [...new Map(catalogProducts.flatMap(p => p.tags || [])
+        .map(t => [JSON.stringify([t.name, t.value]), t])).values()];
+      $('existingProductTag').replaceChildren(new Option('Etiket seç', ''));
+      tagSuggestions.forEach((t, i) => $('existingProductTag').add(new Option(t.name + ': ' + t.value, String(i))));
+      const names = [...new Set(tagSuggestions.map(t => t.name))].sort((a, b) => a.localeCompare(b, 'tr'));
+      const selectedName = $('filterTagName').value;
+      $('filterTagName').replaceChildren(new Option('Etiket seç', ''));
+      $('tagNameSuggestions').replaceChildren();
+      for (const name of names) {
+        $('filterTagName').add(new Option(name, name));
+        $('tagNameSuggestions').append(new Option(name, name));
+      }
+      if (names.includes(selectedName)) $('filterTagName').value = selectedName;
+      renderFilterValues();
+    }
+
+    function renderFilterValues() {
+      const selected = $('filterTagValue').value;
+      const values = [...new Set(tagSuggestions.filter(t => t.name === $('filterTagName').value).map(t => t.value))];
+      $('filterTagValue').replaceChildren(new Option('Değer seç', ''));
+      values.forEach(value => $('filterTagValue').add(new Option(value, value)));
+      if (values.includes(selected)) $('filterTagValue').value = selected;
+    }
+
+    function renderCatalogFilters() {
+      $('activeTagFilters').replaceChildren();
+      catalogFilters.forEach((f, i) => {
+        const button = document.createElement('button'); button.type = 'button'; button.className = 'secondary';
+        button.textContent = f.name + ': ' + f.value + ' ×';
+        button.setAttribute('aria-label', f.name + ': ' + f.value + ' filtresini kaldır');
+        button.addEventListener('click', () => { catalogFilters.splice(i, 1); renderCatalogFilters(); renderProducts(); });
+        $('activeTagFilters').append(button);
+      });
+    }
+
+    async function refreshMovements() {
+      if (!can('STOCK_VIEW') && !can('BRANCH_STOCK_VIEW')) return;
+      const session = token; const request = ++movementRequest;
+      const [history, locations, products] = await Promise.all([
+        api('/stock-movements'), api('/stock-movements/locations'), api('/stock-movements/products')
+      ]);
+      if (token !== session || request !== movementRequest) return;
+      movementHistory = history;
+      const selected = $('movementLocation').value;
+      $('movementLocation').replaceChildren(new Option('Stok yeri seç', ''));
+      $('historyLocation').replaceChildren(new Option('Tümü', ''));
+      for (const location of locations) {
+        const value = location.branchId == null ? 'central' : String(location.branchId);
+        $('movementLocation').add(new Option(location.name, value));
+        $('historyLocation').add(new Option(location.name, value));
+      }
+      if ([...$('movementLocation').options].some(o => o.value === selected)) $('movementLocation').value = selected;
+      if (locations.length === 1) $('movementLocation').selectedIndex = 1;
+      setOptions('movementProduct', 'Ürün seç', products, p => p.name + ' · ' + p.sku);
+      $('movementEditor').hidden = !can('STOCK_MANAGE') && !can('BRANCH_STOCK_MANAGE');
+      renderMovementHistory();
+    }
+
+    function renderMovementHistory() {
+      const body = $('movementRows'); body.replaceChildren();
+      const location = $('historyLocation').value; const direction = $('historyDirection').value;
+      const rows = movementHistory.filter(m => (!location || (m.branchId == null ? 'central' : String(m.branchId)) === location)
+        && (!direction || m.direction === direction));
+      if (!rows.length) emptyRow(body, 'Gösterilecek stok hareketi yok.', 8);
+      for (const m of rows) {
+        const row = document.createElement('tr');
+        cell(row, clock.format(new Date(m.createdAt))); cell(row, m.locationName);
+        cell(row, m.productName + ' · ' + m.sku); cell(row, m.direction === 'IN' ? 'Giriş' : 'Çıkış');
+        cell(row, numbers.format(m.quantity), 'numeric'); cell(row, numbers.format(m.remainingQuantity), 'numeric');
+        cell(row, [m.reason, m.note].filter(Boolean).join(' · ') || '—'); cell(row, m.username);
         body.append(row);
       }
     }
 
     function renderInvitePermissions() {
       const { scope, employeeRole } = selectedInviteRole();
-      const base = employeeRole?.permissions || permissionOptions.filter(option => option.scope === scope).map(option => option.code);
-      const body = $('invitePermissions');
+      const base = employeeRole?.permissions || permissionOptions.filter(option => option.scope === scope && option.defaultGranted !== false).map(option => option.code);
+      renderPermissionChoices('invitePermissions', scope, base, base);
+    }
+
+    function renderPermissionChoices(containerId, scope, selected, base) {
+      const body = $(containerId);
       body.replaceChildren();
       for (const permission of permissionOptions.filter(option => option.scope === scope)) {
         const label = document.createElement('label');
@@ -793,12 +1239,18 @@
         input.name = 'invitePermission';
         input.value = permission.code;
         input.dataset.base = String(base.includes(permission.code));
-        input.checked = base.includes(permission.code);
+        input.checked = selected.includes(permission.code);
         input.addEventListener('change', () => {
-          const dependent = { BRANCH_STOCK_VIEW: 'BRANCH_SALE_CREATE', ORDERS_VIEW: 'ORDERS_CREATE' };
-          const prerequisite = { BRANCH_SALE_CREATE: 'BRANCH_STOCK_VIEW', ORDERS_CREATE: 'ORDERS_VIEW' };
-          const linked = body.querySelector('input[value="' + (input.checked ? prerequisite[input.value] : dependent[input.value]) + '"]');
-          if (linked) linked.checked = input.checked;
+          const prerequisite = { BRANCH_SALE_CREATE: 'BRANCH_STOCK_VIEW', BRANCH_STOCK_MANAGE: 'BRANCH_STOCK_VIEW',
+            ORDERS_CREATE: 'ORDERS_VIEW', STOCK_MANAGE: 'STOCK_VIEW', PRODUCTS_CREATE: 'PRODUCTS_VIEW',
+            PRODUCTS_EDIT: 'PRODUCTS_VIEW', PRODUCTS_DELETE: 'PRODUCTS_VIEW' };
+          if (input.checked && prerequisite[input.value]) {
+            body.querySelector('input[value="' + prerequisite[input.value] + '"]').checked = true;
+          } else if (!input.checked) {
+            for (const [dependent, required] of Object.entries(prerequisite)) {
+              if (required === input.value) body.querySelector('input[value="' + dependent + '"]').checked = false;
+            }
+          }
         });
         label.append(input, document.createTextNode(permission.label));
         body.append(label);
@@ -921,13 +1373,14 @@
       }
       const body = $('stockRows');
       body.replaceChildren();
-      if (!stockRows.length) emptyRow(body, 'Henüz ürün yok.', isAdmin ? 7 : 6);
+      if (!stockRows.length) emptyRow(body, 'Henüz ürün yok.', isAdmin ? 8 : 7);
       let outOfStock = 0;
       for (const { product, stock } of stockRows) {
         const row = document.createElement('tr');
         cell(row, product.id);
         cell(row, product.sku);
         cell(row, product.name);
+        cell(row, numbers.format(product.quantity || 0), 'numeric');
         cell(row, stock ? numbers.format(stock.quantity) : 'Tanımlanmamış', 'numeric');
         cell(row, stock ? numbers.format(stock.reservedQuantity) : null, 'numeric');
         cell(row, stock ? numbers.format(stock.availableQuantity) : null, 'numeric');
@@ -959,6 +1412,8 @@
       overviewData = { recentOrders: loadedOrders.slice(0, recentOrderLimit), todayOrders, stockRows };
       renderOverviewDetail();
       renderOrders($('orderRows'), loadedOrders);
+      catalogProducts = products;
+      renderTagSuggestions();
       renderProducts(products);
       if (isAdmin) {
         setOptions('inventoryBranchProduct', 'Ürün seç', products, product => product.name + ' · ' + product.sku);
@@ -995,6 +1450,7 @@
           throw error;
         }
         document.querySelectorAll('[data-admin-only]').forEach(element => { element.hidden = !isAdmin; });
+        document.querySelectorAll('[data-permission]').forEach(element => { element.hidden = !can(element.dataset.permission); });
         document.querySelectorAll('[data-central-only]').forEach(element => { element.hidden = isBranchEmployee; });
         document.querySelectorAll('[data-branch-only]').forEach(element => { element.hidden = !isBranchEmployee; });
         $('branchSaleForm').closest('section').hidden = !can('BRANCH_SALE_CREATE');
@@ -1016,7 +1472,14 @@
       permissions = new Set();
       employeeRoles = [];
       permissionOptions = [];
+      closeProductEditor();
+      catalogProducts = []; tagSuggestions = []; catalogFilters = []; movementHistory = []; movementRequest++;
+      $('productSearch').value = ''; $('activeTagFilters').replaceChildren(); $('movementRows').replaceChildren();
+      $('movementEditor').hidden = true; $('movementForm').reset();
       resetRoleForm();
+      closeEmployeeEditor();
+      employeeListRequest++;
+      $('employeeRows').replaceChildren();
       selectedStockProductId = null;
       $('stockForm').hidden = true;
       $('invitationLink').value = '';
@@ -1122,6 +1585,39 @@
       });
     });
 
+    $('refreshEmployees').addEventListener('click', event => action(event.currentTarget, refreshEmployees));
+    $('cancelEmployeeEdit').addEventListener('click', closeEmployeeEditor);
+    $('employeePermissionForm').addEventListener('submit', event => {
+      event.preventDefault();
+      if (!editingEmployee) return;
+      const employee = editingEmployee;
+      $('employeePermissionError').textContent = '';
+      action(event.submitter, async () => {
+        const session = token;
+        const selected = [...$('employeePermissionChoices').querySelectorAll('input:checked')].map(input => input.value);
+        if (!selected.length) throw new Error('Çalışana en az bir yetki bırak.');
+        const saved = await api('/auth/accounts/' + employee.id + '/permissions', 'PUT', {
+          revision: employee.revision,
+          permissions: selected
+        });
+        if (token !== session || !isAdmin) return;
+        if (editingEmployee === employee) closeEmployeeEditor();
+        notify(saved.username + ' için yetkiler kaydedildi.');
+        try {
+          await refreshEmployees();
+        } catch (error) {
+          if (token === session) notify('Yetkiler kaydedildi. Çalışan listesi yenilenemedi.', true);
+        }
+      }, async error => {
+        if (editingEmployee !== employee) return;
+        $('employeePermissionError').textContent = error.message;
+        if (error.status === 409) {
+          try { await refreshEmployees(); }
+          catch (refreshError) { notify(refreshError.message, true); }
+        }
+      });
+    });
+
     $('employeeRoleScope').addEventListener('change', () => renderRolePermissions());
     $('cancelRoleEdit').addEventListener('click', resetRoleForm);
     $('employeeRoleForm').addEventListener('submit', event => {
@@ -1171,6 +1667,10 @@
         $('invitationResult').hidden = false;
         $('invitationLink').select();
         notify('Parola belirleme bağlantısı hazır.');
+        try { await refreshEmployees(); }
+        catch (error) {
+          if (isAdmin) notify('Parola bağlantısı hazır. Çalışan listesi yenilenemedi.', true);
+        }
       });
     });
     $('activationForm').addEventListener('submit', event => {
@@ -1214,24 +1714,53 @@
     $('productForm').addEventListener('submit', event => {
       event.preventDefault();
       action(event.submitter, async () => {
-        const product = await api('/products', 'POST', {
-          name: $('productName').value,
-          sku: $('productSku').value,
-          price: Number($('productPrice').value)
-        });
-        try {
-          await api('/products/' + product.id + '/stock', 'POST', {
-            quantity: Number($('initialStockQuantity').value)
-          });
-        } catch (error) {
-          await refresh();
-          notify('Ürün oluşturuldu, fakat başlangıç stoğu kaydedilemedi. Listedeki üründen stoğu düzenle: ' + error.message, true);
-          return;
-        }
-        $('productForm').reset();
-        $('initialStockQuantity').value = 0;
-        notify('Ürün ve başlangıç stoğu kaydedildi.');
+        const tags = [...$('productTagRows').children].map(row => ({
+          name: row.querySelector('.tag-name').value.trim(), value: row.querySelector('.tag-value').value.trim()
+        }));
+        const request = { name: $('productName').value.trim(), sku: $('productSku').value.trim(),
+          price: Number($('productPrice').value), tags };
+        const creating = editingProductId === null;
+        if (creating) request.quantity = Number($('initialStockQuantity').value);
+        await api(creating ? '/products' : '/products/' + editingProductId, creating ? 'POST' : 'PUT', request);
+        closeProductEditor();
+        notify(creating ? 'Ürün, etiketleri ve başlangıç adedi kaydedildi.' : 'Ürün ve etiketleri güncellendi.');
         await refresh();
+      });
+    });
+    $('newProduct').addEventListener('click', () => openProductEditor());
+    document.querySelectorAll('[data-product-create]').forEach(link => link.addEventListener('click', event => {
+      event.preventDefault(); openProductEditor();
+    }));
+    $('cancelProductEdit').addEventListener('click', closeProductEditor);
+    $('addProductTag').addEventListener('click', () => addTagRow());
+    $('existingProductTag').addEventListener('change', () => {
+      const selected = $('existingProductTag').value;
+      if (selected !== '') addTagRow(tagSuggestions[Number(selected)]);
+      $('existingProductTag').value = '';
+    });
+    $('productSearch').addEventListener('input', () => renderProducts());
+    $('filterTagName').addEventListener('change', renderFilterValues);
+    $('addTagFilter').addEventListener('click', () => {
+      const filter = { name: $('filterTagName').value, value: $('filterTagValue').value };
+      if (!filter.name || !filter.value) return;
+      if (!catalogFilters.some(f => f.name === filter.name && f.value === filter.value)) catalogFilters.push(filter);
+      renderCatalogFilters(); renderProducts();
+    });
+    $('historyLocation').addEventListener('change', renderMovementHistory);
+    $('historyDirection').addEventListener('change', renderMovementHistory);
+    $('refreshMovements').addEventListener('click', event => action(event.currentTarget, refreshMovements));
+    $('movementForm').addEventListener('submit', event => {
+      event.preventDefault();
+      action(event.submitter, async () => {
+        const location = $('movementLocation').value;
+        await api('/stock-movements', 'POST', {
+          productId: Number($('movementProduct').value), branchId: location === 'central' ? null : Number(location),
+          direction: $('movementDirection').value, quantity: Number($('movementQuantity').value),
+          reason: $('movementReason').value.trim() || null, note: $('movementNote').value.trim() || null
+        });
+        $('movementQuantity').value = ''; $('movementReason').value = ''; $('movementNote').value = '';
+        await Promise.all([refreshMovements(), isBranchEmployee ? refreshEmployeeStock() : refresh()]);
+        notify('Stok hareketi ve ürün adedi güncellendi.');
       });
     });
     $('stockForm').addEventListener('submit', event => {

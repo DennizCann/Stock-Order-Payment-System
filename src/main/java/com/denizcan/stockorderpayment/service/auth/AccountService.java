@@ -5,6 +5,8 @@ import com.denizcan.stockorderpayment.domain.user.Role;
 import com.denizcan.stockorderpayment.domain.user.EmployeeRole;
 import com.denizcan.stockorderpayment.domain.user.Permission;
 import java.util.Set;
+import java.util.List;
+import java.util.HashSet;
 import java.util.EnumSet;
 import java.util.Collections;
 import com.denizcan.stockorderpayment.repository.user.EmployeeRoleRepository;
@@ -61,7 +63,7 @@ public class AccountService {
         Set<Permission> basePermissions = employeeRole == null
                 ? Permission.defaultsFor(role) : employeeRole.getPermissions();
         Set<Permission> additions = addedPermissions == null ? Set.of() : addedPermissions;
-        validateExceptions(basePermissions, Permission.defaultsFor(role), exclusions, additions);
+        validateExceptions(basePermissions, Permission.availableFor(role), exclusions, additions);
         byte[] bytes = new byte[32];
         RANDOM.nextBytes(bytes);
         String token = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
@@ -81,6 +83,68 @@ public class AccountService {
             throw accountExists();
         }
         return token;
+    }
+
+    @Transactional(readOnly = true)
+    public List<EmployeeAccount> employees() {
+        return users.findByRoleNotOrderByUsernameAsc(Role.ADMIN).stream().map(EmployeeAccount::from).toList();
+    }
+
+    @Transactional
+    public EmployeeAccount updatePermissions(Long id, String revision, Set<Permission> selected) {
+        User user = users.findByIdForUpdate(id).orElseThrow(() ->
+                new ResponseStatusException(HttpStatus.NOT_FOUND, "Çalışan bulunamadı."));
+        if (user.getRole() == Role.ADMIN) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Yönetici hesabının izinleri bu ekrandan değiştirilemez.");
+        }
+        EmployeeAccount current = EmployeeAccount.from(user);
+        if (!current.revision().equals(revision)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Çalışanın veya rolünün yetkileri değişmiş. Listeyi yenileyip tekrar düzenle.");
+        }
+        Set<Permission> available = Permission.availableFor(user.getRole());
+        if (!available.containsAll(selected)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Çalışma alanına uygun yetkiler seç.");
+        }
+        validateEffectivePermissions(selected);
+
+        // Preserve existing personal exceptions even if the shared role has since changed.
+        Set<Permission> additions = new HashSet<>(user.getAddedPermissions());
+        Set<Permission> exclusions = new HashSet<>(user.getExcludedPermissions());
+        for (Permission permission : available) {
+            if (selected.contains(permission)) {
+                exclusions.remove(permission);
+                if (!current.basePermissions().contains(permission)) additions.add(permission);
+            } else {
+                additions.remove(permission);
+                if (current.basePermissions().contains(permission)) exclusions.add(permission);
+            }
+        }
+        user.setAddedPermissions(additions);
+        user.setExcludedPermissions(exclusions);
+        return EmployeeAccount.from(user);
+    }
+
+    public record EmployeeAccount(Long id, String username, String roleName, Role scope, String branchName,
+                                  boolean enabled, Set<Permission> basePermissions, Set<Permission> permissions,
+                                  String revision) {
+        static EmployeeAccount from(User user) {
+            EmployeeRole role = user.getEmployeeRole();
+            Set<Permission> base = Set.copyOf(role == null
+                    ? Permission.defaultsFor(user.getRole()) : role.getPermissions());
+            String roleName = role == null
+                    ? user.getRole() == Role.BRANCH_EMPLOYEE ? "Şube çalışanı" : "Merkez çalışanı"
+                    : role.getName();
+            String revision = hash(user.getId() + "|" + user.getRole() + "|"
+                    + (role == null ? "" : role.getId()) + "|" + user.isEnabled() + "|"
+                    + base.stream().sorted().toList() + "|"
+                    + user.getAddedPermissions().stream().sorted().toList() + "|"
+                    + user.getExcludedPermissions().stream().sorted().toList());
+            return new EmployeeAccount(user.getId(), user.getUsername(), roleName, user.getRole(),
+                    user.getBranch() == null ? null : user.getBranch().getName(), user.isEnabled(),
+                    base, Set.copyOf(Permission.forUser(user)), revision);
+        }
     }
 
     @Transactional
@@ -122,7 +186,11 @@ public class AccountService {
         effective.addAll(base);
         effective.addAll(additions);
         effective.removeAll(exclusions);
-        if (effective.isEmpty()
+        validateEffectivePermissions(effective);
+    }
+
+    private void validateEffectivePermissions(Set<Permission> effective) {
+        if (effective.isEmpty() || !Permission.validDependencies(effective)
                 || effective.contains(Permission.BRANCH_SALE_CREATE) && !effective.contains(Permission.BRANCH_STOCK_VIEW)
                 || effective.contains(Permission.ORDERS_CREATE) && !effective.contains(Permission.ORDERS_VIEW)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,

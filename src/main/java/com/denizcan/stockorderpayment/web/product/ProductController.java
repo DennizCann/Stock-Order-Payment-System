@@ -15,6 +15,10 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import com.denizcan.stockorderpayment.web.product.dto.ProductTagRequest;
 
 @RestController
 @RequestMapping("/api/v1/products")
@@ -30,9 +34,21 @@ public class ProductController {
     }
 
     @GetMapping
-    public List<ProductResponse> findAll() {
-        return productService.findAll();
+    public List<ProductResponse> findAll(@RequestParam(defaultValue = "false") boolean includeArchived) {
+        return productService.findAll().stream().filter(p -> includeArchived || p.active()).toList();
     }
+
+    @GetMapping("/tags")
+    public List<ProductTagRequest> tags() { return productService.tagSuggestions(); }
+
+    @PutMapping("/{id}")
+    public ProductResponse update(@PathVariable Long id, @Valid @RequestBody CreateProductRequest request) {
+        return productService.update(id, request);
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void archive(@PathVariable Long id) { productService.archive(id); }
 
     @GetMapping("/{id}")
     public ProductResponse findById(@PathVariable Long id) {

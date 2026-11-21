@@ -10,6 +10,8 @@ public record StockMovementRequest(
         Integer quantity,
 
         @Size(max = 255, message = "Note must be at most 255 characters")
-        String note
+        String note,
+        @Size(max = 100) String reason
 ) {
+    public StockMovementRequest(Integer quantity, String note) { this(quantity, note, null); }
 }

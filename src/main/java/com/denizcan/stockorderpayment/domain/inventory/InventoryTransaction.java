@@ -46,6 +46,16 @@ public class InventoryTransaction {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    @Column(length = 64)
+    private String actor;
+
+    @Column(length = 100)
+    private String reason;
+
+    public void setReason(String reason) { this.reason = reason; }
+
+    public void setActor(String actor) { this.actor = actor; }
+
     public InventoryTransaction(
             Long productId,
             InventoryTransactionType type,
